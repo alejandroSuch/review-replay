@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/alejandroSuch/review-replay/internal/filters"
 	"github.com/alejandroSuch/review-replay/internal/llm"
 	"github.com/alejandroSuch/review-replay/internal/prompts"
 	"github.com/alejandroSuch/review-replay/internal/types"
@@ -156,6 +157,22 @@ func applyShortCircuit(e types.CommentEvidence) *ruleHit {
 				Status:     types.StatusAddressed,
 				Confidence: 0.95,
 				Rationale:  rationale,
+			},
+		}
+	}
+	if e.Resolved && filters.IsBotAuthor(e.Comment.Author) {
+		resolver := "a maintainer"
+		if e.ResolvedByLogin != nil {
+			resolver = *e.ResolvedByLogin
+		}
+		return &ruleHit{
+			ruleName: "resolved-bot-thread",
+			classification: types.Classification{
+				CommentID:  e.Comment.ID,
+				Origin:     types.OriginInline,
+				Status:     types.StatusAddressed,
+				Confidence: 0.90,
+				Rationale:  fmt.Sprintf("Bot-authored thread marked resolved by %s (bots do not reply to confirm; the resolve click is the final ack).", resolver),
 			},
 		}
 	}

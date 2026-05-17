@@ -44,6 +44,29 @@ func TestStripQuotedLines(t *testing.T) {
 	}
 }
 
+func TestIsBotAuthor(t *testing.T) {
+	cases := []struct {
+		login string
+		want  bool
+	}{
+		{"github-actions[bot]", true},
+		{"github-actions", true},
+		{"copilot-pull-request-reviewer", true},
+		{"copilot-pull-request-reviewer[bot]", true},
+		{"dependabot[bot]", true},
+		{"renovate", true},
+		{"alice", false},
+		{"bob42", false},
+		{"", false},
+	}
+	for _, c := range cases {
+		got := IsBotAuthor(c.login)
+		if got != c.want {
+			t.Errorf("IsBotAuthor(%q) = %v, want %v", c.login, got, c.want)
+		}
+	}
+}
+
 func TestBodySimilarity(t *testing.T) {
 	t.Run("identical", func(t *testing.T) {
 		if got := BodySimilarity("hello world test", "hello world test"); got != 1 {

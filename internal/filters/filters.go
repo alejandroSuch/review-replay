@@ -70,6 +70,53 @@ func BodySimilarity(a, b string) float64 {
 	return float64(inter) / float64(union)
 }
 
+// Known bot logins that GitHub sometimes returns without the [bot] suffix.
+// Keep this short and conservative — we only want to skip the LLM call for
+// truly noisy / formulaic bots.
+var knownBots = map[string]struct{}{
+	"github-actions":                {},
+	"dependabot":                    {},
+	"renovate":                      {},
+	"renovate-bot":                  {},
+	"codecov":                       {},
+	"codecov-commenter":             {},
+	"vercel":                        {},
+	"vercel-preview-bot":            {},
+	"netlify":                       {},
+	"copilot-pull-request-reviewer": {},
+	"coderabbitai":                  {},
+	"greptile-apps":                 {},
+	"snyk-bot":                      {},
+	"gitkraken-services":            {},
+	"mergify":                       {},
+	"mergify-bot":                   {},
+	"pre-commit-ci":                 {},
+}
+
+// IsBotAuthor returns true when the login looks like a GitHub bot. Handles
+// both the canonical `<name>[bot]` suffix and the de-suffixed form that
+// go-github occasionally returns on REST endpoints.
+func IsBotAuthor(login string) bool {
+	if login == "" {
+		return false
+	}
+	if strings.HasSuffix(login, "[bot]") {
+		return true
+	}
+	lower := strings.ToLower(login)
+	if _, ok := knownBots[lower]; ok {
+		return true
+	}
+	// Some clients drop the suffix to `<name>` but keep a [bot] marker
+	// elsewhere; tolerate the prefix form too.
+	for known := range knownBots {
+		if strings.HasPrefix(lower, known+"[") {
+			return true
+		}
+	}
+	return false
+}
+
 var nonWord = regexp.MustCompile(`[^\w\s]`)
 
 func tokenize(s string) map[string]struct{} {
