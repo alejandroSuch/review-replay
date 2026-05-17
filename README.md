@@ -120,6 +120,12 @@ Make the job a required check to block merge on `pending` comments.
 
 See [`action/examples/copilot-followup.yml`](./action/examples/copilot-followup.yml) for a workflow that only blocks on Copilot's reviews.
 
+## AI assistant integrations
+
+Drop-in skills/rules so Claude Code, Cursor, Codex CLI, Windsurf, Continue.dev or Aider can invoke `review-replay` when you ask them to verify PR feedback.
+
+See [`integrations/`](./integrations/) for ready-to-copy files per tool.
+
 ## Eval harness
 
 Capture fixtures from real PRs, label by hand, run the classifier, compare runs across model swaps.

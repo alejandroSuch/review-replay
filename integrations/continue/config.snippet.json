@@ -1,0 +1,12 @@
+{
+  "slashCommands": [
+    {
+      "name": "review-replay",
+      "description": "Verify reviewer concerns on a GitHub PR were addressed",
+      "step": "ShellCommandStep",
+      "params": {
+        "command": "review-replay \"$(gh pr view --json url --jq .url)\""
+      }
+    }
+  ]
+}

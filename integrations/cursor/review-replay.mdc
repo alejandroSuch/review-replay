@@ -1,0 +1,43 @@
+---
+description: Verify reviewer concerns on a GitHub PR were addressed before declaring the PR ready.
+globs:
+alwaysApply: false
+---
+
+When the user asks to verify, re-check, or audit pull request feedback — or is about to tell a reviewer "all addressed" — invoke the `review-replay` CLI to classify each comment as addressed / partial / pending / needs-discussion.
+
+# How to run
+
+1. Make sure `review-replay` is on PATH. If not:
+   ```bash
+   go install github.com/alejandroSuch/review-replay/cmd/review-replay@latest
+   ```
+2. Ensure these env vars are set:
+   - `GITHUB_TOKEN` (or `GH_TOKEN`)
+   - One of `OPENROUTER_API_KEY` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GEMINI_API_KEY`
+3. Resolve the PR. For the current branch:
+   ```bash
+   gh pr view --json url --jq .url
+   ```
+4. Run:
+   ```bash
+   review-replay <pr-url>
+   ```
+5. Useful flags:
+   - `--check` — exit 1 if any comment is `pending` (CI-gate semantics).
+   - `--reviewer <substring>` — filter to one author (e.g. `copilot`).
+   - `--json` — machine-parseable output.
+   - `--no-llm` — show evidence packets without calling the LLM.
+
+# What to report back
+
+- The summary line and the table.
+- Pending / partial entries with their location and body snippet.
+- The draft replies for the user to copy.
+- If `--check` failed, the count of pending comments.
+
+# Anti-patterns
+
+- Don't use `--post` to actually post replies — live posting is gated and only `--dry-run` is supported.
+- Don't trust verdicts with confidence < 0.6 without flagging the uncertainty.
+- Don't generate new reviews with this tool. It only verifies existing ones.
