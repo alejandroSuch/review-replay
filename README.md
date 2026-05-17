@@ -44,6 +44,60 @@ cd review-replay
 go build -o review-replay ./cmd/review-replay
 ```
 
+## GitHub auth
+
+`review-replay` reads from `GITHUB_TOKEN` or `GH_TOKEN`. How you get one depends on where you're running it.
+
+### Local use (CLI)
+
+The simplest path is to reuse the token from your `gh` CLI session:
+
+```bash
+gh auth login    # one-time, browser flow
+export GITHUB_TOKEN="$(gh auth token)"
+```
+
+That's enough for **read-only** runs (the default and `--check`). The default `gh auth` scopes already include what review-replay needs to read PR conversations.
+
+### Personal Access Token (PAT)
+
+For scripts, CI outside Actions, or shared environments, generate a **fine-grained PAT** at <https://github.com/settings/personal-access-tokens> with these repository permissions:
+
+| Permission | Level | Needed for |
+|---|---|---|
+| Contents | Read | Commit metadata, file content at HEAD |
+| Pull requests | Read | Reviews, threads, issue comments |
+| Pull requests | **Read and write** | Only if you plan to use `--post` to reply to comments |
+| Metadata | Read | (auto) |
+
+Then:
+
+```bash
+export GITHUB_TOKEN="github_pat_..."
+```
+
+Classic PATs (`ghp_...`) also work; the relevant scope is `repo` (or `public_repo` for public repos only).
+
+### GitHub Actions
+
+You do **not** need to create a token. The runner provides one automatically:
+
+```yaml
+- uses: alejandroSuch/review-replay/action@main
+  with:
+    api-key: ${{ secrets.OPENROUTER_API_KEY }}
+    # github-token defaults to ${{ github.token }}, no setup needed
+```
+
+The auto-provided token has read access to the PR by default. Make sure the job has:
+
+```yaml
+permissions:
+  pull-requests: read
+  contents: read
+  # plus pull-requests: write if you ever enable --post
+```
+
 ## Usage
 
 ```bash
