@@ -220,7 +220,7 @@ func main() {
 
 	if a.post {
 		code := postDrafts(ctx, ghClient, pr, classified.Outcomes, a.yes, a.dryRun)
-		if code != 0 {
+		if code != 0 && exitCode == 0 {
 			exitCode = code
 		}
 	}
@@ -257,18 +257,28 @@ func pingLLM(ctx context.Context, a args) int {
 	return 0
 }
 
-func postDrafts(ctx context.Context, _ *github.Client, _ types.PrRef, outcomes []types.Outcome, yes, dryRun bool) int {
+func postDrafts(ctx context.Context, gh *github.Client, pr types.PrRef, outcomes []types.Outcome, yes, dryRun bool) int {
 	candidates := make([]types.Outcome, 0)
 	for _, o := range outcomes {
-		if o.Classification.DraftReply != nil && strings.TrimSpace(*o.Classification.DraftReply) != "" {
-			candidates = append(candidates, o)
+		if o.Classification.DraftReply == nil || strings.TrimSpace(*o.Classification.DraftReply) == "" {
+			continue
 		}
+		// Only inline replies have a target API endpoint; review summaries
+		// and issue comments aren't structurally repliable on GitHub.
+		if o.Classification.Origin != types.OriginInline {
+			continue
+		}
+		candidates = append(candidates, o)
 	}
 	if len(candidates) == 0 {
-		fmt.Println("\n--post: no draft replies to post.")
+		fmt.Println("\n--post: no inline draft replies to post.")
 		return 0
 	}
-	fmt.Printf("\n--post: %d draft replies.\n", len(candidates))
+	mode := "live"
+	if dryRun {
+		mode = "dry-run"
+	}
+	fmt.Printf("\n--post (%s): %d inline draft replies.\n", mode, len(candidates))
 
 	reader := bufio.NewReader(os.Stdin)
 	posted, skipped, failed := 0, 0, 0
@@ -294,10 +304,14 @@ func postDrafts(ctx context.Context, _ *github.Client, _ types.PrRef, outcomes [
 			posted++
 			continue
 		}
-		// Phase 2: posting against the real GitHub API is intentionally
-		// disabled while we still verify the classifier. Use --dry-run.
-		fmt.Println("  [error] live posting not enabled yet; rerun with --dry-run.")
-		failed++
+		reply, err := gh.PostInlineReply(ctx, pr, o.Classification.CommentID, *o.Classification.DraftReply)
+		if err != nil {
+			fmt.Printf("  [error] %v\n", err)
+			failed++
+			continue
+		}
+		fmt.Printf("  posted: %s\n", reply.HTMLURL)
+		posted++
 	}
 	fmt.Printf("\n--post summary: %d posted, %d skipped, %d failed.\n", posted, skipped, failed)
 	if failed > 0 {

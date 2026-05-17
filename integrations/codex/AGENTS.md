@@ -46,6 +46,6 @@ Do NOT use to:
 
 ## Don't
 
-- Don't pass `--post` without `--dry-run`. Live posting is intentionally disabled.
+- `--post` posts inline replies to GitHub. Prefer `--dry-run` first to preview what would be posted. Live posting is interactive by default; only add `--yes` when the user explicitly authorizes batch posting.
 - Don't run repeatedly inside loops — each call costs LLM tokens.
 - Don't trust verdicts with confidence < 0.6 without surfacing the uncertainty.

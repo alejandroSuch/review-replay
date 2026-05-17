@@ -38,6 +38,6 @@ When the user asks to verify, re-check, or audit pull request feedback — or is
 
 # Anti-patterns
 
-- Don't use `--post` to actually post replies — live posting is gated and only `--dry-run` is supported.
+- `--post` posts inline reply drafts to GitHub. Default is interactive. Use `--dry-run` to preview without hitting the API; use `--yes` to skip prompts.
 - Don't trust verdicts with confidence < 0.6 without flagging the uncertainty.
 - Don't generate new reviews with this tool. It only verifies existing ones.

@@ -136,7 +136,7 @@ review-replay <pr> [flags]
 |---|---|
 | (default) | Classify and print a report |
 | `--check` | Exit 1 if any comment is classified `pending`. Use as a required CI check. |
-| `--post` | Post draft replies. Without `--yes`, prompts per comment. Live posting is gated; use `--dry-run` to rehearse. |
+| `--post` | Post draft replies to inline review threads. Default is interactive: prompts `y/N/q` per comment. Add `--yes` to skip prompts, `--dry-run` to preview without hitting the GitHub API. |
 | `--no-llm` | Skip classification, only show deterministic evidence packets. |
 | `--ping-llm` | Probe LLM provider config and exit. |
 | `--json` | Emit full JSON output instead of the table. |

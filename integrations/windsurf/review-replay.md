@@ -24,6 +24,6 @@ When the user wants to verify whether PR review feedback has been addressed, run
 
 ## Don't
 
-- Don't use `--post` — live posting is intentionally disabled.
+- `--post` posts inline replies to GitHub. Default is interactive (prompts per comment). Prefer `--dry-run` to preview; only use `--yes` for unattended batch posting when the user authorizes it.
 - Don't trust verdicts with confidence < 0.6 without flagging.
 - Don't use this tool to *generate* review feedback; it only verifies existing.

@@ -65,7 +65,7 @@ If the binary is missing, `go install` it before running. If no LLM key is prese
 
 - `review-replay` reads the GitHub state at the moment of invocation. If the user just pushed a commit, give GitHub a few seconds before re-running.
 - Confidence below 0.6 is suspicious — flag those cases to the user instead of treating the verdict as final.
-- `--post` exists but live posting is disabled in this version. Don't suggest it for actually posting yet; use `--dry-run` to preview.
+- `--post` posts inline reply drafts directly to GitHub. Default is interactive (prompts `y/N/q` per draft). Use `--yes` to post all without prompting, or `--dry-run` to preview without touching the API. Only inline drafts are posted; review summaries and issue comments are skipped since they have no reply target.
 
 ## Troubleshooting
 
