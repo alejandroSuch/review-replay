@@ -34,9 +34,33 @@ As more code gets written by agents that claim "I addressed it", you need an ind
 go install github.com/alejandroSuch/review-replay/cmd/review-replay@latest
 ```
 
-Binary lands in `$(go env GOPATH)/bin`.
+Binary lands in `$(go env GOPATH)/bin`. Add that to your `PATH` if it isn't already.
 
-Or build from source:
+### Pinning a version (or installing from `main`)
+
+`@latest` resolves to the most recent semver tag. If you want to follow the development branch (no tag is required), or you just pushed a fix and want it immediately, install from `main` and bypass the Go module proxy cache:
+
+```bash
+GOPROXY=direct go install github.com/alejandroSuch/review-replay/cmd/review-replay@main
+```
+
+Other useful pins:
+
+```bash
+go install github.com/alejandroSuch/review-replay/cmd/review-replay@v0.1.0   # tag
+go install github.com/alejandroSuch/review-replay/cmd/review-replay@1e079c3  # commit
+```
+
+### Verify the installed build
+
+```bash
+which review-replay
+go version -m "$(which review-replay)" | grep vcs.revision
+```
+
+The revision should match the commit you intended to install.
+
+### From source
 
 ```bash
 git clone https://github.com/alejandroSuch/review-replay
