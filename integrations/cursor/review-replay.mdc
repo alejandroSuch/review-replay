@@ -10,7 +10,7 @@ When the user asks to verify, re-check, or audit pull request feedback — or is
 
 1. Make sure `review-replay` is on PATH. If not:
    ```bash
-   go install github.com/alejandroSuch/review-replay/cmd/review-replay@latest
+   GOPROXY=direct go install github.com/alejandroSuch/review-replay/cmd/review-replay@main
    ```
 2. Ensure these env vars are set:
    - `GITHUB_TOKEN` (or `GH_TOKEN`)

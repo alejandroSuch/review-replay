@@ -15,7 +15,7 @@ The `trigger: model_decision` frontmatter lets Cascade decide when to invoke it 
 
 - `review-replay` binary on PATH:
   ```bash
-  go install github.com/alejandroSuch/review-replay/cmd/review-replay@latest
+  GOPROXY=direct go install github.com/alejandroSuch/review-replay/cmd/review-replay@main
   ```
 - `GITHUB_TOKEN` env var.
 - One LLM API key.

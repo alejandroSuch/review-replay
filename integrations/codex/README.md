@@ -26,7 +26,7 @@ cat AGENTS.md >> ./AGENTS.md
 
 - `review-replay` binary on PATH:
   ```bash
-  go install github.com/alejandroSuch/review-replay/cmd/review-replay@latest
+  GOPROXY=direct go install github.com/alejandroSuch/review-replay/cmd/review-replay@main
   ```
 - `GITHUB_TOKEN` env var.
 - One LLM API key.

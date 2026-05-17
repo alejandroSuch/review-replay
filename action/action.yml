@@ -35,9 +35,9 @@ inputs:
     required: false
     default: ${{ github.token }}
   version:
-    description: Version of review-replay to install (git ref or "latest")
+    description: Version of review-replay to install (git ref, semver tag, commit, "latest" or "main")
     required: false
-    default: latest
+    default: main
 
 outputs:
   pending-count:
@@ -60,13 +60,10 @@ runs:
       shell: bash
       env:
         VERSION: ${{ inputs.version }}
+        GOPROXY: direct
       run: |
         set -euo pipefail
-        if [ "$VERSION" = "latest" ]; then
-          go install github.com/alejandroSuch/review-replay/cmd/review-replay@latest
-        else
-          go install "github.com/alejandroSuch/review-replay/cmd/review-replay@$VERSION"
-        fi
+        go install "github.com/alejandroSuch/review-replay/cmd/review-replay@$VERSION"
         echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
     - name: Run review-replay

@@ -29,7 +29,7 @@ It also runs proactively after any address-reviews flow to confirm the fixes act
 
 - `review-replay` binary on PATH:
   ```bash
-  go install github.com/alejandroSuch/review-replay/cmd/review-replay@latest
+  GOPROXY=direct go install github.com/alejandroSuch/review-replay/cmd/review-replay@main
   ```
 - `GITHUB_TOKEN` / `GH_TOKEN` env var.
 - One LLM API key (`OPENROUTER_API_KEY` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GEMINI_API_KEY`).

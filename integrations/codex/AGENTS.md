@@ -17,7 +17,7 @@ Do NOT use to:
 
 1. Ensure the binary is installed:
    ```bash
-   go install github.com/alejandroSuch/review-replay/cmd/review-replay@latest
+   GOPROXY=direct go install github.com/alejandroSuch/review-replay/cmd/review-replay@main
    ```
 2. Set env if not already:
    ```bash

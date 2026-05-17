@@ -9,7 +9,7 @@ When the user wants to verify whether PR review feedback has been addressed, run
 
 1. If `review-replay` is missing:
    ```bash
-   go install github.com/alejandroSuch/review-replay/cmd/review-replay@latest
+   GOPROXY=direct go install github.com/alejandroSuch/review-replay/cmd/review-replay@main
    ```
 2. Ensure env: `GITHUB_TOKEN` plus one of `OPENROUTER_API_KEY` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GEMINI_API_KEY`.
 3. Resolve the PR (current branch via `gh pr view --json url --jq .url` or use what the user gave).

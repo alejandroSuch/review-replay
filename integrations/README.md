@@ -15,7 +15,7 @@ Drop-in configs so your AI coding assistant can invoke `review-replay` when you 
 
 1. Install the binary:
    ```bash
-   go install github.com/alejandroSuch/review-replay/cmd/review-replay@latest
+   GOPROXY=direct go install github.com/alejandroSuch/review-replay/cmd/review-replay@main
    ```
 2. GitHub auth:
    ```bash

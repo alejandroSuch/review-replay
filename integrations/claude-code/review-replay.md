@@ -20,7 +20,7 @@ Do NOT invoke for: generating new review comments (that's CodeRabbit / Copilot R
 
 ```bash
 # Binary
-go install github.com/alejandroSuch/review-replay/cmd/review-replay@latest
+GOPROXY=direct go install github.com/alejandroSuch/review-replay/cmd/review-replay@main
 
 # GitHub auth (one of)
 export GITHUB_TOKEN="$(gh auth token)"
