@@ -1,0 +1,34 @@
+# .github/workflows/copilot-followup.yml
+#
+# Whenever the PR is updated, check whether GitHub Copilot's review comments
+# have been addressed. Block merge if any are still pending.
+name: copilot-followup
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened]
+
+jobs:
+  verify-copilot:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+      contents: read
+    steps:
+      - name: Detect Copilot review
+        id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          REVIEWS=$(gh api \
+            /repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews \
+            --jq '[.[] | select(.user.login | test("copilot"; "i"))] | length')
+          echo "count=$REVIEWS" >> "$GITHUB_OUTPUT"
+
+      - name: Verify Copilot feedback addressed
+        if: steps.detect.outputs.count != '0'
+        uses: alejandroSuch/review-replay/action@main
+        with:
+          mode: check
+          reviewer: copilot
+          api-key: ${{ secrets.OPENROUTER_API_KEY }}

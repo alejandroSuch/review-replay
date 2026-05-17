@@ -1,0 +1,108 @@
+name: review-replay
+description: Verify that every PR review comment was addressed. Block merges with pending feedback.
+author: Alejandro Such
+branding:
+  icon: check-circle
+  color: blue
+
+inputs:
+  pr:
+    description: PR URL or short form (owner/repo#N). Defaults to the current PR.
+    required: false
+    default: ${{ github.event.pull_request.html_url }}
+  mode:
+    description: 'check | report. "check" exits 1 on pending. "report" prints only.'
+    required: false
+    default: check
+  provider:
+    description: 'openrouter | openai | anthropic | gemini'
+    required: false
+    default: openrouter
+  model:
+    description: Model id (overrides provider default)
+    required: false
+  api-key:
+    description: API key for the LLM provider
+    required: true
+  base-url:
+    description: Override the provider base URL (OpenAI-compatible custom endpoints)
+    required: false
+  reviewer:
+    description: Only classify comments whose author matches (case-insensitive substring). Useful for gating on a specific reviewer like Copilot.
+    required: false
+  github-token:
+    description: GitHub token (falls back to ${{ github.token }})
+    required: false
+    default: ${{ github.token }}
+  version:
+    description: Version of review-replay to install (git ref or "latest")
+    required: false
+    default: latest
+
+outputs:
+  pending-count:
+    description: Number of comments classified as 'pending'
+    value: ${{ steps.run.outputs.pending-count }}
+  summary:
+    description: One-line status summary
+    value: ${{ steps.run.outputs.summary }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: stable
+        cache: false
+
+    - name: Install review-replay
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        if [ "$VERSION" = "latest" ]; then
+          go install github.com/alejandroSuch/review-replay/cmd/review-replay@latest
+        else
+          go install "github.com/alejandroSuch/review-replay/cmd/review-replay@$VERSION"
+        fi
+        echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+    - name: Run review-replay
+      id: run
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        RR_PROVIDER: ${{ inputs.provider }}
+        RR_MODEL: ${{ inputs.model }}
+        RR_API_KEY: ${{ inputs.api-key }}
+        RR_BASE_URL: ${{ inputs.base-url }}
+      run: |
+        set -e
+        ARGS=()
+        case "${{ inputs.mode }}" in
+          check) ARGS+=("--check") ;;
+          report) ;;
+          *) echo "::error::Invalid mode: ${{ inputs.mode }}"; exit 1 ;;
+        esac
+        if [ -n "${{ inputs.reviewer }}" ]; then
+          ARGS+=("--reviewer" "${{ inputs.reviewer }}")
+        fi
+
+        OUT=$(mktemp)
+        set +e
+        review-replay "${{ inputs.pr }}" --json "${ARGS[@]}" > "$OUT"
+        EXIT=$?
+        set -e
+
+        SUMMARY=$(jq -r '.Report.Summary | "\(.addressed // 0) addressed · \(.partial // 0) partial · \(.pending // 0) pending · \(.["needs-discussion"] // 0) needs-discussion"' "$OUT" 2>/dev/null || echo "n/a")
+        PENDING=$(jq -r '.Report.Summary.pending // 0' "$OUT" 2>/dev/null || echo "0")
+        echo "summary=$SUMMARY" >> "$GITHUB_OUTPUT"
+        echo "pending-count=$PENDING" >> "$GITHUB_OUTPUT"
+        echo "## review-replay: $SUMMARY" >> "$GITHUB_STEP_SUMMARY"
+
+        # Also print the human-friendly table to the log for quick inspection.
+        review-replay "${{ inputs.pr }}" "${ARGS[@]}" || true
+
+        exit $EXIT
