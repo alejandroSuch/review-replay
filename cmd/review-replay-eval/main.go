@@ -362,6 +362,85 @@ func runEval(args []string) error {
 	statuses := []types.ClassificationStatus{
 		types.StatusAddressed, types.StatusPartial, types.StatusPending, types.StatusNeedsDiscussion,
 	}
+
+	// Per-class precision / recall / F1.
+	type pr struct {
+		tp, fp, fn int
+	}
+	stats := map[types.ClassificationStatus]*pr{}
+	for _, s := range statuses {
+		stats[s] = &pr{}
+	}
+	for _, r := range results {
+		if r.Expected == r.Predicted {
+			stats[r.Expected].tp++
+		} else {
+			stats[r.Predicted].fp++
+			stats[r.Expected].fn++
+		}
+	}
+	fmt.Println("\nper-class precision / recall / F1:")
+	fmt.Printf("  %-18s %9s %9s %9s\n", "class", "prec", "recall", "f1")
+	for _, s := range statuses {
+		p := safeDiv(float64(stats[s].tp), float64(stats[s].tp+stats[s].fp))
+		rc := safeDiv(float64(stats[s].tp), float64(stats[s].tp+stats[s].fn))
+		f1 := 0.0
+		if p+rc > 0 {
+			f1 = 2 * p * rc / (p + rc)
+		}
+		fmt.Printf("  %-18s %9.2f %9.2f %9.2f\n", s, p, rc, f1)
+	}
+
+	// False-addressed rate: the product cares about this more than any other
+	// failure mode. Of all non-addressed ground truths, how many got
+	// predicted as addressed?
+	var falseAddressed, nonAddressedTotal int
+	for _, r := range results {
+		if r.Expected == types.StatusAddressed {
+			continue
+		}
+		nonAddressedTotal++
+		if r.Predicted == types.StatusAddressed {
+			falseAddressed++
+		}
+	}
+	fmt.Println("\nfalse-addressed rate (predicted addressed when ground truth was not):")
+	if nonAddressedTotal == 0 {
+		fmt.Println("  n/a (no non-addressed fixtures)")
+	} else {
+		fmt.Printf("  %d / %d = %.1f%%\n", falseAddressed, nonAddressedTotal, float64(falseAddressed)/float64(nonAddressedTotal)*100)
+	}
+
+	// Confidence calibration: bucket predictions by confidence band and report
+	// accuracy in each band. If conf >= 0.85 doesn't beat conf < 0.65 by a
+	// wide margin, the model isn't actually telling you when to trust it.
+	type band struct {
+		label string
+		lo    float64
+		hi    float64
+	}
+	bands := []band{
+		{">= 0.85", 0.85, 1.01},
+		{"0.65 - 0.85", 0.65, 0.85},
+		{"< 0.65", 0.0, 0.65},
+	}
+	fmt.Println("\nconfidence calibration:")
+	fmt.Printf("  %-12s %9s %9s\n", "band", "acc", "n")
+	for _, b := range bands {
+		correct, total := 0, 0
+		for _, r := range results {
+			if r.Confidence < b.lo || r.Confidence >= b.hi {
+				continue
+			}
+			total++
+			if r.Match {
+				correct++
+			}
+		}
+		acc := safeDiv(float64(correct), float64(total)) * 100
+		fmt.Printf("  %-12s %8.1f%% %9d\n", b.label, acc, total)
+	}
+
 	fmt.Println("\nconfusion matrix (rows=expected, cols=predicted):")
 	header := strings.Builder{}
 	header.WriteString(strings.Repeat(" ", 18))
@@ -666,6 +745,13 @@ func runDiscover(args []string) error {
 	}
 	fmt.Fprintf(os.Stderr, "\nWrote %d PRs to %s\n", len(kept), outFile)
 	return nil
+}
+
+func safeDiv(num, den float64) float64 {
+	if den == 0 {
+		return 0
+	}
+	return num / den
 }
 
 func trunc(s string, n int) string {

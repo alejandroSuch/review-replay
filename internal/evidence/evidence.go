@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/alejandroSuch/review-replay/internal/filters"
 	"github.com/alejandroSuch/review-replay/internal/github"
@@ -15,8 +16,13 @@ import (
 )
 
 const (
-	hunkContextLines      = 5
+	hunkContextLines       = 5
 	dupSimilarityThreshold = 0.6
+	// dupSameAuthorWindow caps how close in time two comments by the same
+	// author have to be to count as a duplicate. Wider than this and we
+	// assume the second one is a deliberate restatement (the author
+	// circling back), not a double-post we should silently drop.
+	dupSameAuthorWindow = 30 * time.Minute
 )
 
 // Build assembles inline and issue-level evidence for a PR snapshot.
@@ -311,21 +317,47 @@ func buildIssueLevelComments(snap *types.PrSnapshot) []types.IssueLevelComment {
 	return dedupeBySimilarity(all)
 }
 
+// dedupeBySimilarity drops follow-up comments only when they are clearly an
+// accidental double-post by the same author within a short window. We do NOT
+// drop comments by a different author or far apart in time — those are
+// legitimate restatements / follow-up reviews and must reach the classifier.
 func dedupeBySimilarity(in []types.IssueLevelComment) []types.IssueLevelComment {
 	kept := make([]types.IssueLevelComment, 0, len(in))
 	for _, c := range in {
 		dup := false
 		for _, k := range kept {
-			if filters.BodySimilarity(k.Body, c.Body) >= dupSimilarityThreshold {
-				dup = true
-				break
+			if k.Author != c.Author {
+				continue
 			}
+			if filters.BodySimilarity(k.Body, c.Body) < dupSimilarityThreshold {
+				continue
+			}
+			if !withinWindow(k.CreatedAt, c.CreatedAt, dupSameAuthorWindow) {
+				continue
+			}
+			dup = true
+			break
 		}
 		if !dup {
 			kept = append(kept, c)
 		}
 	}
 	return kept
+}
+
+func withinWindow(a, b string, window time.Duration) bool {
+	ta, err1 := time.Parse(time.RFC3339, a)
+	tb, err2 := time.Parse(time.RFC3339, b)
+	if err1 != nil || err2 != nil {
+		// If we can't parse, fall back to "not within window" to avoid
+		// accidental dedupe.
+		return false
+	}
+	diff := ta.Sub(tb)
+	if diff < 0 {
+		diff = -diff
+	}
+	return diff <= window
 }
 
 func buildIssueLevelEvidence(snap *types.PrSnapshot, comments []types.IssueLevelComment) []types.IssueLevelEvidence {
@@ -344,68 +376,10 @@ func buildIssueLevelEvidence(snap *types.PrSnapshot, comments []types.IssueLevel
 			}
 		}
 		out = append(out, types.IssueLevelEvidence{
-			Comment:            c,
-			LaterCommits:       laterCommits,
-			LaterReplies:       laterReplies,
-			LaterInlineThreads: digestInlineThreadsAfter(snap, c.CreatedAt),
+			Comment:      c,
+			LaterCommits: laterCommits,
+			LaterReplies: laterReplies,
 		})
 	}
 	return out
-}
-
-func digestInlineThreadsAfter(snap *types.PrSnapshot, cutoff string) []types.InlineThreadDigest {
-	byID := make(map[int64]types.ReviewComment, len(snap.ReviewComments))
-	for _, c := range snap.ReviewComments {
-		byID[c.ID] = c
-	}
-	out := make([]types.InlineThreadDigest, 0)
-	for _, t := range snap.ReviewThreads {
-		root, ok := byID[t.RootCommentID]
-		if !ok {
-			continue
-		}
-		replies := make([]types.ReviewComment, 0)
-		for _, id := range t.CommentIDs[1:] {
-			if c, ok := byID[id]; ok {
-				replies = append(replies, c)
-			}
-		}
-		lastActivity := root.CreatedAt
-		for _, r := range replies {
-			if r.CreatedAt > lastActivity {
-				lastActivity = r.CreatedAt
-			}
-		}
-		if lastActivity <= cutoff {
-			continue
-		}
-		authorReplies := make([]types.ThreadReply, 0)
-		for _, r := range replies {
-			if r.Author != root.Author && r.CreatedAt > cutoff {
-				authorReplies = append(authorReplies, types.ThreadReply{
-					Author:    r.Author,
-					Body:      truncate(r.Body, 400),
-					CreatedAt: r.CreatedAt,
-				})
-			}
-		}
-		out = append(out, types.InlineThreadDigest{
-			RootCommentID:   t.RootCommentID,
-			Path:            root.Path,
-			Line:            root.Line,
-			Reviewer:        root.Author,
-			Body:            truncate(root.Body, 400),
-			Resolved:        t.IsResolved,
-			ResolvedByLogin: t.ResolvedByLogin,
-			AuthorReplies:   authorReplies,
-		})
-	}
-	return out
-}
-
-func truncate(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n] + "…"
 }

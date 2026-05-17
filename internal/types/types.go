@@ -114,32 +114,11 @@ type CommentEvidence struct {
 	ResolvedByLogin        *string
 }
 
-// InlineThreadDigest is a condensed view of an inline thread for issue-level
-// classification context.
-type InlineThreadDigest struct {
-	RootCommentID   int64
-	Path            string
-	Line            *int
-	Reviewer        string
-	Body            string
-	Resolved        bool
-	ResolvedByLogin *string
-	AuthorReplies   []ThreadReply
-}
-
-// ThreadReply is one reply inside an inline thread.
-type ThreadReply struct {
-	Author    string
-	Body      string
-	CreatedAt string
-}
-
 // IssueLevelEvidence is the packet for review summaries / issue comments.
 type IssueLevelEvidence struct {
-	Comment            IssueLevelComment
-	LaterCommits       []Commit
-	LaterReplies       []IssueLevelComment
-	LaterInlineThreads []InlineThreadDigest
+	Comment      IssueLevelComment
+	LaterCommits []Commit
+	LaterReplies []IssueLevelComment
 }
 
 // ClassificationStatus is the verdict per comment.
