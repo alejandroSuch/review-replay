@@ -16,8 +16,7 @@ import (
 )
 
 const (
-	hunkContextLines       = 5
-	dupSimilarityThreshold = 0.6
+	hunkContextLines = 5
 	// dupSameAuthorWindow caps how close in time two comments by the same
 	// author have to be to count as a duplicate. Wider than this and we
 	// assume the second one is a deliberate restatement (the author
@@ -314,22 +313,32 @@ func buildIssueLevelComments(snap *types.PrSnapshot) []types.IssueLevelComment {
 	sort.SliceStable(all, func(i, j int) bool {
 		return all[i].CreatedAt < all[j].CreatedAt
 	})
-	return dedupeBySimilarity(all)
+	return dedupeAccidentalRepost(all)
 }
 
-// dedupeBySimilarity drops follow-up comments only when they are clearly an
-// accidental double-post by the same author within a short window. We do NOT
-// drop comments by a different author or far apart in time — those are
-// legitimate restatements / follow-up reviews and must reach the classifier.
-func dedupeBySimilarity(in []types.IssueLevelComment) []types.IssueLevelComment {
+// dedupeAccidentalRepost drops follow-up comments only when they are clearly
+// an accidental double-post: same author, same comment Kind, same review
+// state, byte-equal body after quote-stripping, posted within a short window.
+// Anything paraphrased, time-separated, or kind-distinct (e.g. a review
+// summary followed minutes later by an issue comment that materially changes
+// the ask) MUST reach the classifier — silently dropping it loses real
+// feedback.
+func dedupeAccidentalRepost(in []types.IssueLevelComment) []types.IssueLevelComment {
 	kept := make([]types.IssueLevelComment, 0, len(in))
 	for _, c := range in {
 		dup := false
+		cBody := strings.TrimSpace(c.Body)
 		for _, k := range kept {
 			if k.Author != c.Author {
 				continue
 			}
-			if filters.BodySimilarity(k.Body, c.Body) < dupSimilarityThreshold {
+			if k.Kind != c.Kind {
+				continue
+			}
+			if !reviewStateMatches(k.ReviewState, c.ReviewState) {
+				continue
+			}
+			if strings.TrimSpace(k.Body) != cBody {
 				continue
 			}
 			if !withinWindow(k.CreatedAt, c.CreatedAt, dupSameAuthorWindow) {
@@ -343,6 +352,16 @@ func dedupeBySimilarity(in []types.IssueLevelComment) []types.IssueLevelComment 
 		}
 	}
 	return kept
+}
+
+func reviewStateMatches(a, b *types.ReviewState) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return *a == *b
 }
 
 func withinWindow(a, b string, window time.Duration) bool {

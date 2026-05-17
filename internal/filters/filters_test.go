@@ -67,22 +67,3 @@ func TestIsBotAuthor(t *testing.T) {
 	}
 }
 
-func TestBodySimilarity(t *testing.T) {
-	t.Run("identical", func(t *testing.T) {
-		if got := BodySimilarity("hello world test", "hello world test"); got != 1 {
-			t.Fatalf("identical bodies: got %f, want 1", got)
-		}
-	})
-	t.Run("paraphrased", func(t *testing.T) {
-		a := "Please rename the variable buffer to pendingWriteBuffer."
-		b := "rename buffer to pendingWriteBuffer please"
-		if got := BodySimilarity(a, b); got <= 0.5 {
-			t.Fatalf("paraphrased: got %f, want > 0.5", got)
-		}
-	})
-	t.Run("unrelated", func(t *testing.T) {
-		if got := BodySimilarity("rebase against main first", "extract this constant"); got >= 0.2 {
-			t.Fatalf("unrelated: got %f, want < 0.2", got)
-		}
-	})
-}

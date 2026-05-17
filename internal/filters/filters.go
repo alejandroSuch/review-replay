@@ -48,28 +48,6 @@ func StripQuotedLines(body string) string {
 	return strings.TrimSpace(joined)
 }
 
-// BodySimilarity returns a Jaccard similarity between two bodies based on
-// lowercased word tokens of length >= 4. Cheap and good enough to detect
-// quoted-or-restated reviews.
-func BodySimilarity(a, b string) float64 {
-	ta := tokenize(a)
-	tb := tokenize(b)
-	if len(ta) == 0 || len(tb) == 0 {
-		return 0
-	}
-	inter := 0
-	for tok := range ta {
-		if _, ok := tb[tok]; ok {
-			inter++
-		}
-	}
-	union := len(ta) + len(tb) - inter
-	if union == 0 {
-		return 0
-	}
-	return float64(inter) / float64(union)
-}
-
 // Known bot logins that GitHub sometimes returns without the [bot] suffix.
 // Keep this short and conservative — we only want to skip the LLM call for
 // truly noisy / formulaic bots.
@@ -115,18 +93,4 @@ func IsBotAuthor(login string) bool {
 		}
 	}
 	return false
-}
-
-var nonWord = regexp.MustCompile(`[^\w\s]`)
-
-func tokenize(s string) map[string]struct{} {
-	clean := nonWord.ReplaceAllString(strings.ToLower(s), " ")
-	tokens := strings.Fields(clean)
-	out := make(map[string]struct{}, len(tokens))
-	for _, t := range tokens {
-		if len(t) >= 4 {
-			out[t] = struct{}{}
-		}
-	}
-	return out
 }

@@ -85,6 +85,11 @@ type FixtureSource struct {
 	CommentID int64  `json:"commentId"`
 }
 
+// Label is intentionally single-annotator for now: one status plus free-form
+// notes. This is too lossy for ambiguous fixtures (partial vs needs-discussion,
+// addressed vs needs-discussion on borderline cases) and will need a richer
+// schema when more than one annotator labels the same fixtures. Tracked at
+// https://github.com/alejandroSuch/review-replay/issues/1.
 type Label struct {
 	Status types.ClassificationStatus `json:"status,omitempty"`
 	Notes  string                     `json:"notes"`
@@ -490,16 +495,60 @@ func runEval(args []string) error {
 	}
 
 	if saveName != "" {
+		perClass := map[string]map[string]float64{}
+		for _, s := range statuses {
+			p := safeDiv(float64(stats[s].tp), float64(stats[s].tp+stats[s].fp))
+			rc := safeDiv(float64(stats[s].tp), float64(stats[s].tp+stats[s].fn))
+			f1 := 0.0
+			if p+rc > 0 {
+				f1 = 2 * p * rc / (p + rc)
+			}
+			perClass[string(s)] = map[string]float64{
+				"precision": p,
+				"recall":    rc,
+				"f1":        f1,
+				"tp":        float64(stats[s].tp),
+				"fp":        float64(stats[s].fp),
+				"fn":        float64(stats[s].fn),
+			}
+		}
+		var falseAddressedRate float64
+		if nonAddressedTotal > 0 {
+			falseAddressedRate = float64(falseAddressed) / float64(nonAddressedTotal)
+		}
+		calibration := map[string]map[string]float64{}
+		for _, b := range bands {
+			cb, tb := 0, 0
+			for _, r := range results {
+				if r.Confidence < b.lo || r.Confidence >= b.hi {
+					continue
+				}
+				tb++
+				if r.Match {
+					cb++
+				}
+			}
+			calibration[b.label] = map[string]float64{
+				"accuracy": safeDiv(float64(cb), float64(tb)),
+				"correct":  float64(cb),
+				"total":    float64(tb),
+			}
+		}
 		saved := map[string]any{
-			"runAt":    time.Now().UTC().Format(time.RFC3339),
-			"provider": resolved.Provider,
-			"model":    resolved.Model,
-			"fixtures": total,
-			"labelled": total,
-			"accuracy": float64(correct) / float64(total),
-			"perKind":  perKindToMap(perKind),
-			"perSource": perKindToMap(perSource),
-			"results":  results,
+			"runAt":                 time.Now().UTC().Format(time.RFC3339),
+			"provider":              resolved.Provider,
+			"model":                 resolved.Model,
+			"fixtures":              total,
+			"labelled":              total,
+			"accuracy":              float64(correct) / float64(total),
+			"perKind":               perKindToMap(perKind),
+			"perSource":             perKindToMap(perSource),
+			"perClass":              perClass,
+			"falseAddressedRate":    falseAddressedRate,
+			"falseAddressedCount":   falseAddressed,
+			"nonAddressedTotal":     nonAddressedTotal,
+			"confidenceCalibration": calibration,
+			"results":               results,
 		}
 		if err := os.MkdirAll("eval/runs", 0o755); err != nil {
 			return err
@@ -590,23 +639,71 @@ func runDiff(args []string) error {
 
 	fmt.Printf("A: %s/%s @ %s → %.1f%%\n", a.Provider, a.Model, a.RunAt, a.Accuracy*100)
 	fmt.Printf("B: %s/%s @ %s → %.1f%%\n", b.Provider, b.Model, b.RunAt, b.Accuracy*100)
-	fmt.Printf("Δ accuracy: %.1fpp\n\n", (b.Accuracy-a.Accuracy)*100)
-	fmt.Printf("Fixes: %d · Regressions: %d · Churn: %d\n\n", fixes, regressions, churn)
+	fmt.Printf("Δ accuracy: %+.1fpp\n\n", (b.Accuracy-a.Accuracy)*100)
+	fmt.Printf("Fixes: %d · Regressions: %d · Churn: %d\n", fixes, regressions, churn)
 
-	for _, f := range flips {
-		fmt.Printf("  %s\n", f.id)
-		fmt.Printf("    A→B: %s → %s (expected %s)\n", f.aStatus, f.bStatus, f.expected)
-		fmt.Printf("    rationale: %s\n", f.bRationale)
+	// False-addressed rate — the product-critical risk metric.
+	fmt.Printf("\nΔ false-addressed rate: A=%.1f%%  B=%.1f%%  (%+.1fpp)\n",
+		a.FalseAddressedRate*100, b.FalseAddressedRate*100, (b.FalseAddressedRate-a.FalseAddressedRate)*100)
+
+	// Per-class precision / recall / F1 deltas.
+	if len(a.PerClass) > 0 && len(b.PerClass) > 0 {
+		statusOrder := []string{"addressed", "partial", "pending", "needs-discussion"}
+		fmt.Println("\nΔ per-class (B - A):")
+		fmt.Printf("  %-18s %10s %10s %10s\n", "class", "Δprec", "Δrecall", "Δf1")
+		for _, s := range statusOrder {
+			am, ok := a.PerClass[s]
+			bm, ok2 := b.PerClass[s]
+			if !ok || !ok2 {
+				continue
+			}
+			fmt.Printf("  %-18s %+10.2f %+10.2f %+10.2f\n",
+				s,
+				bm["precision"]-am["precision"],
+				bm["recall"]-am["recall"],
+				bm["f1"]-am["f1"],
+			)
+		}
+	}
+
+	// Confidence calibration deltas.
+	if len(a.ConfidenceCalibration) > 0 && len(b.ConfidenceCalibration) > 0 {
+		bands := []string{">= 0.85", "0.65 - 0.85", "< 0.65"}
+		fmt.Println("\nΔ calibration accuracy (B - A):")
+		fmt.Printf("  %-12s %10s %10s %10s\n", "band", "A acc", "B acc", "Δ")
+		for _, label := range bands {
+			am, ok := a.ConfidenceCalibration[label]
+			bm, ok2 := b.ConfidenceCalibration[label]
+			if !ok || !ok2 {
+				continue
+			}
+			fmt.Printf("  %-12s %9.1f%% %9.1f%% %+9.1fpp\n",
+				label, am["accuracy"]*100, bm["accuracy"]*100, (bm["accuracy"]-am["accuracy"])*100)
+		}
+	}
+
+	if len(flips) > 0 {
+		fmt.Println("\nFlipped predictions:")
+		for _, f := range flips {
+			fmt.Printf("  %s\n", f.id)
+			fmt.Printf("    A→B: %s → %s (expected %s)\n", f.aStatus, f.bStatus, f.expected)
+			fmt.Printf("    rationale: %s\n", f.bRationale)
+		}
 	}
 	return nil
 }
 
 type savedRun struct {
-	RunAt    string `json:"runAt"`
-	Provider string `json:"provider"`
-	Model    string `json:"model"`
-	Accuracy float64 `json:"accuracy"`
-	Results  []map[string]any `json:"results"`
+	RunAt                 string                                `json:"runAt"`
+	Provider              string                                `json:"provider"`
+	Model                 string                                `json:"model"`
+	Accuracy              float64                               `json:"accuracy"`
+	PerClass              map[string]map[string]float64         `json:"perClass"`
+	FalseAddressedRate    float64                               `json:"falseAddressedRate"`
+	FalseAddressedCount   int                                   `json:"falseAddressedCount"`
+	NonAddressedTotal     int                                   `json:"nonAddressedTotal"`
+	ConfidenceCalibration map[string]map[string]float64         `json:"confidenceCalibration"`
+	Results               []map[string]any                      `json:"results"`
 }
 
 func loadRun(name string) (*savedRun, error) {
