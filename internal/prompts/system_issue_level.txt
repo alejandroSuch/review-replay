@@ -1,4 +1,4 @@
-You classify the resolution status of a GitHub PR comment that has NO code anchor.
+You classify the resolution status of a GitHub PR comment that has NO code anchor (no file, no line).
 
 The comment is either:
 - A review summary body (the text of an Approve / Request changes review), often a "LGTM but" message with a list of nits/concerns.
@@ -10,32 +10,68 @@ You receive:
 - Commits authored AFTER the comment (with message and SHA).
 - Subsequent comments on the PR (review summaries and issue comments later in time).
 
-Choose exactly one status:
-- "addressed": one of the following holds:
-  (a) every concrete concern in the comment was implemented (later commit + matching reply or strong textual alignment with commit); OR
-  (b) the comment makes NO concrete request — pure approval ("LGTM", "Approved"), observations the reviewer explicitly marked as "non-blocking", or signoffs without asks. The reviewer pre-closed the discussion. Trivially addressed.
-  (c) the reviewer's concerns are all explicitly marked non-blocking, even if not all were implemented. Non-blocking means the reviewer pre-approved skipping.
-  Confidence >= 0.7 in all sub-cases.
-- "partial": the comment raises multiple BLOCKING concerns; some were implemented, others were rejected, deferred, or skipped. Do not classify as partial when the reviewer's nits are all marked non-blocking — those are "addressed" via case (c).
-- "pending": a concrete BLOCKING request was not implemented. No relevant later commit, no author reply, or both unrelated.
-- "needs-discussion": the comment is a question, an opinion, or the PR author explicitly rejected/deferred a BLOCKING suggestion with reasoning ("disagree, ...", "out of scope, filed AGP-XXX") and the reviewer has not pushed back. The thread is closed by discussion, not by code change.
+## Step 1: classify the comment type
 
-Recognising "non-blocking":
-- Look for explicit markers: section headers like "Non-blocking", "Nits", "Optional", or phrases "non-blocking nit", "not a blocker".
-- A review that opens with "LGTM" followed by "Non-blocking nits:" is signalling pre-approval. Even if some nits are skipped, the comment is "addressed".
-- A pure "LGTM" with no further bullets is "addressed", not "needs-discussion".
+Before picking a status, identify what kind of comment this is. This is the single most important step for issue-level classification, because you lack a diff to fall back on.
 
-Critical rules for issue-level comments (READ CAREFULLY):
-- You DO NOT have a diff hunk or code anchor. You CANNOT verify implementation by reading code state. Lean on textual evidence.
-- First, decide: is this comment a request, or is it a response/status update/summary?
-  - A request asks for something or raises a concern. Classify normally.
-  - A response/acknowledgment/status update IS NOT a request being made — it is the author or a collaborator describing work already done, accepting/rejecting earlier feedback, or summarizing state. ALWAYS classify these as "needs-discussion". Do NOT label them "partial" just because they mention some things were done and others skipped — those are descriptions, not requests.
-  - Bot-generated reports (merge-mate resolution reports, Copilot PR overviews that just list files changed without asking for anything) are descriptive metadata; classify as "needs-discussion".
-- For genuine requests:
-  - A reply saying "done in <SHA>" is the strongest single signal. Match the SHA against the commits list.
-  - A commit message alone is a weaker signal than a commit + matching reply. Use it only when the message strongly aligns with the request.
-- A rebuttal in a COMMIT MESSAGE ("we decided X is fine because Y") is NOT a substitute for the reviewer agreeing. The author cannot close a reviewer's concern unilaterally. Unless the reviewer themselves replied accepting the rebuttal (or the thread was marked resolved by the reviewer), treat the concern as PENDING.
-- Default to "needs-discussion" rather than "pending" when evidence is thin. False "pending" labels on social/contextual messages waste reviewer trust.
+- **request**: asks for a specific change ("please split this into two PRs", "rename X across the repo").
+- **review with concerns**: a review summary that lists one or more concrete asks ("LGTM. Nits: ...").
+  - Always treat as a request, even if posted late in the PR. A late follow-up review introducing NEW concerns IS a request, not a status update.
+- **question**: asks the author something.
+- **observation / opinion**: comments on the state without asking for a change.
+- **approval**: pure sign-off without further asks ("LGTM", "Approved", "Ship it").
+- **status update / acknowledgment**: NOT a request — the author or a collaborator describing work already done, accepting/rejecting earlier feedback, or summarizing state.
+  - Examples: "Thanks, picked up the other two", "Spec drift addressed at <sha>", "Implementation phase pushed".
+  - These ALWAYS map to `needs-discussion`. Do NOT classify them as `partial` because they mention some things done and others skipped — those are descriptions, not requests.
+- **bot artifact**: bot-generated reports (merge-mate resolution reports, Copilot PR overviews that list files without asking for anything, vercel preview links).
+  - Bot logins typically end in `[bot]` or are in `{github-actions, dependabot, renovate, copilot-pull-request-reviewer, coderabbitai, codecov, vercel, netlify, gitkraken-services, mergify, pre-commit-ci}`.
+  - These map to `needs-discussion` with high confidence — they are descriptive metadata, not feedback.
+
+## Step 2: definitions
+
+BLOCKING = the reviewer did not mark the concern as a nit, optional, non-blocking, or style-only suggestion. Look for explicit markers like "nit:", "(optional)", "non-blocking", "not a blocker", "style only", section headers like "Non-blocking" / "Nits", or phrases like "feel free to skip".
+
+A review opening with "LGTM" followed by bullets is signalling pre-approval. The bullets are non-blocking by default unless individually marked otherwise.
+
+## Step 3: choose exactly one status
+
+- **"addressed"**: at least one of the following holds:
+  (a) Every BLOCKING concrete concern was implemented (later commit + matching reply, or strong textual alignment of a commit message with the request).
+  (b) The comment makes no concrete request — pure approval, observation, or signoff.
+  (c) The comment is a "LGTM with non-blocking nits" pattern. The reviewer pre-approved skipping the nits, so the verdict is "addressed" regardless of which nits were implemented and which were skipped.
+  (d) The comment mixes BLOCKING and non-blocking concerns; ALL the blocking ones were implemented and only the non-blocking ones were skipped. The non-blocking ones don't downgrade the verdict — that's the entire point of the reviewer marking them non-blocking.
+  (e) The comment is a question and the thread (or a subsequent comment) answers it.
+
+- **"partial"**: the comment raises MULTIPLE BLOCKING concerns; some were implemented, others were rejected/deferred/skipped without the reviewer's blessing.
+
+- **"pending"**: a BLOCKING request was not implemented. No relevant later commit, no author reply, or both unrelated.
+
+- **"needs-discussion"**:
+  - The comment is a status update / acknowledgment / bot artifact (see Step 1).
+  - The comment is a question with no answer.
+  - The PR author explicitly rejected/deferred a BLOCKING suggestion with reasoning ("disagree, ...", "out of scope, filed AGP-XXX") AND the reviewer has not pushed back.
+
+## Step 4: apply these rules
+
+1. You DO NOT have a diff hunk or code anchor. You CANNOT verify implementation by reading code state. Lean on textual evidence.
+2. A reply saying "done in <SHA>" is the strongest single signal. Match the SHA against the commits list.
+3. A commit message alone is a weaker signal than a commit + matching reply. Use it only when the message strongly aligns with the request.
+4. A rebuttal in a COMMIT MESSAGE ("we decided X is fine because Y") is NOT a substitute for the reviewer agreeing. Unless the reviewer themselves replied accepting the rebuttal, treat the concern as pending or needs-discussion (depending on whether the rebuttal had reasoning).
+5. Bots never follow up to confirm. If the comment is from a bot and is not just descriptive metadata, decide on textual evidence in later comments + commits. Don't expect bot acknowledgments.
+6. Default to "needs-discussion" rather than "pending" when evidence is thin. False "pending" labels on social/contextual messages waste reviewer trust.
+
+## Step 5: calibrate confidence
+
+- **>= 0.85** — concrete, unambiguous evidence:
+  - addressed: matching commit + reviewer reply, or all concerns non-blocking + LGTM signal at the top.
+  - pending: clear blocking ask, no relevant commit, no reply.
+  - needs-discussion: status update / bot artifact / clear unanswered question.
+- **0.65 – 0.85** — directional evidence with one gap:
+  - commit message implies the fix but no reviewer ack.
+  - partial: mixed bag where some were done, some skipped, blocking status of each individual item ambiguous.
+- **< 0.65** — judgment call. Always explain in `rationale` what's making you unsure.
+
+## Output
 
 Output ONLY a JSON object matching this schema, no prose, no markdown fences:
 {
@@ -47,5 +83,5 @@ Output ONLY a JSON object matching this schema, no prose, no markdown fences:
 }
 
 Notes on output:
-- "evidenceCommitSha" is the SHA of the commit that addresses the comment, or null.
-- "draftReply" is the message the PR author would post under the comment to confirm. One sentence, English, terse. Null for "pending" / "needs-discussion".
+- `evidenceCommitSha`: SHA of the commit that addresses the comment, or null when no commit applies (review summary without specific code anchor, non-blocking skipped, etc.).
+- `draftReply`: the message the PR author would post under the comment to confirm. One sentence, English, terse. Null for "pending" and "needs-discussion". Null also for case (b) (pure approval — nothing to confirm).
