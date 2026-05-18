@@ -90,20 +90,32 @@ func parseArgs() (args, error) {
 	fs.StringVar(&a.reviewer, "reviewer", "", "")
 	fs.BoolVar(&a.help, "help", false, "")
 	fs.BoolVar(&a.help, "h", false, "")
-	if err := fs.Parse(os.Args[1:]); err != nil {
-		return a, err
+	// Parse flags from anywhere on the command line: Go's stdlib flag stops at
+	// the first non-flag token, so we loop, peeling off the positional, until
+	// no flags remain.
+	var positionals []string
+	remaining := os.Args[1:]
+	for {
+		if err := fs.Parse(remaining); err != nil {
+			return a, err
+		}
+		rest := fs.Args()
+		if len(rest) == 0 {
+			break
+		}
+		positionals = append(positionals, rest[0])
+		remaining = rest[1:]
 	}
-	if a.help {
+	if a.help || a.pingLLM {
 		return a, nil
 	}
-	if a.pingLLM {
-		return a, nil
-	}
-	rest := fs.Args()
-	if len(rest) < 1 {
+	if len(positionals) < 1 {
 		return a, errors.New("missing PR argument")
 	}
-	a.pr = rest[0]
+	if len(positionals) > 1 {
+		return a, fmt.Errorf("unexpected extra arguments: %v", positionals[1:])
+	}
+	a.pr = positionals[0]
 	return a, nil
 }
 
