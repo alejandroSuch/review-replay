@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/alejandroSuch/review-replay/internal/filters"
@@ -19,6 +20,10 @@ type Options struct {
 	LLM       llm.Provider
 	Model     string
 	MaxTokens int
+	// HistoryRewritten signals that the PR branch was force-pushed: commit
+	// SHAs may be unreachable, so the prompt forbids referencing them in
+	// draft replies and we strip evidence SHAs from the final classification.
+	HistoryRewritten bool
 }
 
 // Diagnostics carries provenance metadata about a classification.
@@ -48,7 +53,7 @@ func ClassifyComment(ctx context.Context, e types.CommentEvidence, opts Options)
 		return nil, fmt.Errorf("classifier: no LLM provider configured and no short-circuit match")
 	}
 
-	user := prompts.InlineUser(e)
+	user := prompts.InlineUser(e, opts.HistoryRewritten)
 	resp, err := opts.LLM.Complete(ctx, llm.Request{
 		System:    prompts.SystemInline,
 		Messages:  []llm.Message{{Role: llm.RoleUser, Content: user}},
@@ -71,17 +76,22 @@ func ClassifyComment(ctx context.Context, e types.CommentEvidence, opts Options)
 			},
 		}, nil
 	}
+	cl := types.Classification{
+		CommentID:         e.Comment.ID,
+		Origin:            types.OriginInline,
+		Status:            parsed.Status,
+		EvidenceCommitSha: parsed.EvidenceCommitSha,
+		DraftReply:        parsed.DraftReply,
+		Confidence:        parsed.Confidence,
+		Rationale:         parsed.Rationale,
+	}
+	if opts.HistoryRewritten {
+		cl.EvidenceCommitSha = nil
+		cl.DraftReply = stripSHAs(cl.DraftReply)
+	}
 	return &Result{
-		Classification: types.Classification{
-			CommentID:         e.Comment.ID,
-			Origin:            types.OriginInline,
-			Status:            parsed.Status,
-			EvidenceCommitSha: parsed.EvidenceCommitSha,
-			DraftReply:        parsed.DraftReply,
-			Confidence:        parsed.Confidence,
-			Rationale:         parsed.Rationale,
-		},
-		Diagnostics: Diagnostics{Source: types.SourceLLM, RawText: resp.Text, Usage: resp.Usage},
+		Classification: cl,
+		Diagnostics:    Diagnostics{Source: types.SourceLLM, RawText: resp.Text, Usage: resp.Usage},
 	}, nil
 }
 
@@ -91,7 +101,7 @@ func ClassifyIssueLevel(ctx context.Context, e types.IssueLevelEvidence, opts Op
 	if opts.LLM == nil {
 		return nil, fmt.Errorf("classifier: no LLM provider configured for issue-level classification")
 	}
-	user := prompts.IssueLevelUser(e)
+	user := prompts.IssueLevelUser(e, opts.HistoryRewritten)
 	resp, err := opts.LLM.Complete(ctx, llm.Request{
 		System:    prompts.SystemIssueLevel,
 		Messages:  []llm.Message{{Role: llm.RoleUser, Content: user}},
@@ -118,18 +128,37 @@ func ClassifyIssueLevel(ctx context.Context, e types.IssueLevelEvidence, opts Op
 			},
 		}, nil
 	}
+	cl := types.Classification{
+		CommentID:         e.Comment.ID,
+		Origin:            origin,
+		Status:            parsed.Status,
+		EvidenceCommitSha: parsed.EvidenceCommitSha,
+		DraftReply:        parsed.DraftReply,
+		Confidence:        parsed.Confidence,
+		Rationale:         parsed.Rationale,
+	}
+	if opts.HistoryRewritten {
+		cl.EvidenceCommitSha = nil
+		cl.DraftReply = stripSHAs(cl.DraftReply)
+	}
 	return &Result{
-		Classification: types.Classification{
-			CommentID:         e.Comment.ID,
-			Origin:            origin,
-			Status:            parsed.Status,
-			EvidenceCommitSha: parsed.EvidenceCommitSha,
-			DraftReply:        parsed.DraftReply,
-			Confidence:        parsed.Confidence,
-			Rationale:         parsed.Rationale,
-		},
-		Diagnostics: Diagnostics{Source: types.SourceLLM, RawText: resp.Text, Usage: resp.Usage},
+		Classification: cl,
+		Diagnostics:    Diagnostics{Source: types.SourceLLM, RawText: resp.Text, Usage: resp.Usage},
 	}, nil
+}
+
+// stripSHAs removes 7-40 hex char tokens (likely commit SHAs) from a draft
+// reply. Used when the PR history has been rewritten and any SHA the LLM
+// emitted may now be dangling. Returns nil if the input was nil.
+var shaPattern = regexp.MustCompile(`\b[0-9a-f]{7,40}\b`)
+
+func stripSHAs(s *string) *string {
+	if s == nil {
+		return nil
+	}
+	out := shaPattern.ReplaceAllString(*s, "")
+	out = strings.Join(strings.Fields(out), " ")
+	return &out
 }
 
 type ruleHit struct {

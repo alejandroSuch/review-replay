@@ -22,10 +22,15 @@ const (
 )
 
 // InlineUser builds the user message for an inline comment classification.
-func InlineUser(e types.CommentEvidence) string {
+// historyRewritten signals a force-pushed branch: the prompt then forbids
+// citing commit SHAs in the draft reply.
+func InlineUser(e types.CommentEvidence, historyRewritten bool) string {
 	var b strings.Builder
 	c := e.Comment
 
+	if historyRewritten {
+		fmt.Fprintln(&b, rewriteWarning)
+	}
 	fmt.Fprintln(&b, "# Review comment")
 	fmt.Fprintf(&b, "author: %s\n", c.Author)
 	fmt.Fprintf(&b, "path: %s\n", c.Path)
@@ -95,11 +100,22 @@ func InlineUser(e types.CommentEvidence) string {
 	return b.String()
 }
 
+const rewriteWarning = "# History rewritten\n" +
+	"This PR has been force-pushed at least once. Commit SHAs listed below may be\n" +
+	"unreachable from HEAD. DO NOT cite, reference, or include any commit SHA in\n" +
+	"the `draftReply` field. Describe what changed in prose, not by commit hash."
+
 // IssueLevelUser builds the user message for an issue-level (review summary or
 // issue comment) classification.
-func IssueLevelUser(e types.IssueLevelEvidence) string {
+// historyRewritten signals a force-pushed branch: the prompt then forbids
+// citing commit SHAs in the draft reply.
+func IssueLevelUser(e types.IssueLevelEvidence, historyRewritten bool) string {
 	var b strings.Builder
 	c := e.Comment
+
+	if historyRewritten {
+		fmt.Fprintln(&b, rewriteWarning)
+	}
 
 	header := "Review summary"
 	if c.Kind == types.KindIssueComment {

@@ -65,6 +65,7 @@ func Classify(ctx context.Context, r *Result, opts ClassifyOptions) (*Classified
 		jobs <- func() error {
 			res, err := classifier.ClassifyComment(ctx, e, classifier.Options{
 				LLM: opts.LLM, Model: opts.Model, MaxTokens: opts.MaxTokens,
+				HistoryRewritten: r.Snapshot.HistoryRewritten,
 			})
 			if err != nil {
 				return err
@@ -87,6 +88,7 @@ func Classify(ctx context.Context, r *Result, opts ClassifyOptions) (*Classified
 		jobs <- func() error {
 			res, err := classifier.ClassifyIssueLevel(ctx, e, classifier.Options{
 				LLM: opts.LLM, Model: opts.Model, MaxTokens: opts.MaxTokens,
+				HistoryRewritten: r.Snapshot.HistoryRewritten,
 			})
 			if err != nil {
 				return err

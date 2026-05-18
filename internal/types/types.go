@@ -80,6 +80,10 @@ type PrSnapshot struct {
 	ReviewSummaries []ReviewSummary
 	IssueComments   []IssueComment
 	Commits         []Commit
+	// HistoryRewritten is true when the PR branch has been force-pushed at
+	// least once. When true, commit SHAs referenced by reviews may no longer
+	// be reachable from HEAD, so draft replies must not cite them.
+	HistoryRewritten bool
 }
 
 // IssueLevelKind discriminates between review summaries and issue comments.

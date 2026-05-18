@@ -40,6 +40,36 @@ query ReviewThreads($owner: String!, $repo: String!, $number: Int!, $cursor: Str
   }
 }`
 
+const forcePushedQuery = `
+query ForcePushed($owner: String!, $repo: String!, $number: Int!) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $number) {
+      timelineItems(itemTypes: [HEAD_REF_FORCE_PUSHED_EVENT], last: 1) {
+        totalCount
+      }
+    }
+  }
+}`
+
+type gqlForcePushedPage struct {
+	Repository struct {
+		PullRequest struct {
+			TimelineItems struct {
+				TotalCount int `json:"totalCount"`
+			} `json:"timelineItems"`
+		} `json:"pullRequest"`
+	} `json:"repository"`
+}
+
+func (c *Client) historyRewritten(ctx context.Context, pr types.PrRef) (bool, error) {
+	var page gqlForcePushedPage
+	vars := map[string]any{"owner": pr.Owner, "repo": pr.Repo, "number": pr.Number}
+	if err := c.graphqlQuery(ctx, forcePushedQuery, vars, &page); err != nil {
+		return false, fmt.Errorf("fetch force-push events: %w", err)
+	}
+	return page.Repository.PullRequest.TimelineItems.TotalCount > 0, nil
+}
+
 const reviewsQuery = `
 query Reviews($owner: String!, $repo: String!, $number: Int!, $cursor: String) {
   repository(owner: $owner, name: $repo) {
@@ -232,11 +262,16 @@ func (c *Client) FetchPrSnapshot(ctx context.Context, pr types.PrRef) (*types.Pr
 	if err != nil {
 		return nil, err
 	}
+	rewritten, err := c.historyRewritten(ctx, pr)
+	if err != nil {
+		return nil, err
+	}
 
 	snap := &types.PrSnapshot{
-		PR:       pr,
-		PRAuthor: derefLogin(prData.User),
-		HeadSHA:  derefString(prData.Head.SHA),
+		PR:               pr,
+		PRAuthor:         derefLogin(prData.User),
+		HeadSHA:          derefString(prData.Head.SHA),
+		HistoryRewritten: rewritten,
 	}
 
 	// Map review threads -> ReviewComment + ReviewThread.
