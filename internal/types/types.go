@@ -168,6 +168,7 @@ type Report struct {
 	GeneratedAt     string
 	Classifications []Classification
 	Summary         map[ClassificationStatus]int
+	Usage           UsageTotals
 }
 
 // ClassificationSource is the upstream that produced the classification.
@@ -183,4 +184,21 @@ type Outcome struct {
 	Classification Classification
 	Source         ClassificationSource
 	RuleName       string
+	// Token usage for this outcome. Zero when the outcome came from a rule.
+	InputTokens      int
+	OutputTokens     int
+	CacheReadTokens  int
+	CacheWriteTokens int
+}
+
+// UsageTotals aggregates token counts across outcomes.
+type UsageTotals struct {
+	InputTokens      int
+	OutputTokens     int
+	CacheReadTokens  int
+	CacheWriteTokens int
+	LLMCalls         int
+	RuleCalls        int
+	EstimatedUSD     float64 // 0 if no price known for the model
+	PriceModel       string  // model id used to compute EstimatedUSD; "" if unknown
 }

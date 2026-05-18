@@ -72,9 +72,32 @@ func Report(
 	summary := summarize(outcomes)
 	b.WriteString(bold(fmt.Sprintf("\n%s/%s#%d · head %s\n", snap.PR.Owner, snap.PR.Repo, snap.PR.Number, short(snap.HeadSHA, 7))))
 	b.WriteString(summary)
-	b.WriteString("\n\n")
+	b.WriteString("\n")
+	if line := usageLine(outcomes); line != "" {
+		b.WriteString(dim(line))
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
 	b.WriteString(renderTable(cols, rows))
 	return b.String()
+}
+
+func usageLine(outcomes []types.Outcome) string {
+	var in, out, llm, rule int
+	for _, o := range outcomes {
+		in += o.InputTokens
+		out += o.OutputTokens
+		if o.Source == types.SourceLLM {
+			llm++
+		} else {
+			rule++
+		}
+	}
+	if llm == 0 {
+		return ""
+	}
+	return fmt.Sprintf("usage: %d LLM calls, %d rule calls · %d in / %d out tokens",
+		llm, rule, in, out)
 }
 
 func summarize(outcomes []types.Outcome) string {

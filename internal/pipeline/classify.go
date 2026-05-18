@@ -70,9 +70,13 @@ func Classify(ctx context.Context, r *Result, opts ClassifyOptions) (*Classified
 				return err
 			}
 			outcomes[i] = Outcome{
-				Classification: res.Classification,
-				Source:         res.Diagnostics.Source,
-				RuleName:       res.Diagnostics.RuleName,
+				Classification:   res.Classification,
+				Source:           res.Diagnostics.Source,
+				RuleName:         res.Diagnostics.RuleName,
+				InputTokens:      res.Diagnostics.Usage.InputTokens,
+				OutputTokens:     res.Diagnostics.Usage.OutputTokens,
+				CacheReadTokens:  res.Diagnostics.Usage.CacheReadTokens,
+				CacheWriteTokens: res.Diagnostics.Usage.CacheWriteTokens,
 			}
 			return nil
 		}
@@ -88,9 +92,13 @@ func Classify(ctx context.Context, r *Result, opts ClassifyOptions) (*Classified
 				return err
 			}
 			outcomes[offset] = Outcome{
-				Classification: res.Classification,
-				Source:         res.Diagnostics.Source,
-				RuleName:       res.Diagnostics.RuleName,
+				Classification:   res.Classification,
+				Source:           res.Diagnostics.Source,
+				RuleName:         res.Diagnostics.RuleName,
+				InputTokens:      res.Diagnostics.Usage.InputTokens,
+				OutputTokens:     res.Diagnostics.Usage.OutputTokens,
+				CacheReadTokens:  res.Diagnostics.Usage.CacheReadTokens,
+				CacheWriteTokens: res.Diagnostics.Usage.CacheWriteTokens,
 			}
 			return nil
 		}
@@ -111,15 +119,30 @@ func Classify(ctx context.Context, r *Result, opts ClassifyOptions) (*Classified
 		types.StatusNeedsDiscussion: 0,
 	}
 	classifications := make([]types.Classification, len(outcomes))
+	usage := types.UsageTotals{}
 	for i, o := range outcomes {
 		classifications[i] = o.Classification
 		summary[o.Classification.Status]++
+		usage.InputTokens += o.InputTokens
+		usage.OutputTokens += o.OutputTokens
+		usage.CacheReadTokens += o.CacheReadTokens
+		usage.CacheWriteTokens += o.CacheWriteTokens
+		if o.Source == types.SourceLLM {
+			usage.LLMCalls++
+		} else {
+			usage.RuleCalls++
+		}
+	}
+	if est, ok := estimateUSD(opts.Model, usage.InputTokens, usage.OutputTokens); ok {
+		usage.EstimatedUSD = est
+		usage.PriceModel = opts.Model
 	}
 	report := types.Report{
 		PR:              r.Snapshot.PR,
 		GeneratedAt:     time.Now().UTC().Format(time.RFC3339),
 		Classifications: classifications,
 		Summary:         summary,
+		Usage:           usage,
 	}
 	return &Classified{Result: r, Outcomes: outcomes, Report: report}, nil
 }

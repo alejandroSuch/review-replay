@@ -212,6 +212,9 @@ func main() {
 		writeJSON(classified)
 	} else {
 		fmt.Print(render.Report(res.Snapshot, res.Inline, res.IssueLevel, classified.Outcomes))
+		if u := classified.Report.Usage; u.EstimatedUSD > 0 {
+			fmt.Fprintf(os.Stderr, "\nestimated cost: $%.4f (%s, input list prices)\n", u.EstimatedUSD, u.PriceModel)
+		}
 	}
 
 	exitCode := 0

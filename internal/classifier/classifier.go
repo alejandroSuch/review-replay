@@ -27,6 +27,7 @@ type Diagnostics struct {
 	RuleName   string
 	RawText    string
 	ParseError string
+	Usage      llm.Usage
 }
 
 // Result wraps a classification with its diagnostics.
@@ -66,6 +67,7 @@ func ClassifyComment(ctx context.Context, e types.CommentEvidence, opts Options)
 				Source:     types.SourceLLM,
 				RawText:    resp.Text,
 				ParseError: perr.Error(),
+				Usage:      resp.Usage,
 			},
 		}, nil
 	}
@@ -79,7 +81,7 @@ func ClassifyComment(ctx context.Context, e types.CommentEvidence, opts Options)
 			Confidence:        parsed.Confidence,
 			Rationale:         parsed.Rationale,
 		},
-		Diagnostics: Diagnostics{Source: types.SourceLLM, RawText: resp.Text},
+		Diagnostics: Diagnostics{Source: types.SourceLLM, RawText: resp.Text, Usage: resp.Usage},
 	}, nil
 }
 
@@ -112,6 +114,7 @@ func ClassifyIssueLevel(ctx context.Context, e types.IssueLevelEvidence, opts Op
 				Source:     types.SourceLLM,
 				RawText:    resp.Text,
 				ParseError: perr.Error(),
+				Usage:      resp.Usage,
 			},
 		}, nil
 	}
@@ -125,7 +128,7 @@ func ClassifyIssueLevel(ctx context.Context, e types.IssueLevelEvidence, opts Op
 			Confidence:        parsed.Confidence,
 			Rationale:         parsed.Rationale,
 		},
-		Diagnostics: Diagnostics{Source: types.SourceLLM, RawText: resp.Text},
+		Diagnostics: Diagnostics{Source: types.SourceLLM, RawText: resp.Text, Usage: resp.Usage},
 	}, nil
 }
 
