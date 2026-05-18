@@ -200,9 +200,20 @@ See [`action/examples/copilot-followup.yml`](./action/examples/copilot-followup.
 
 ## AI assistant integrations
 
-Drop-in skills/rules so Claude Code, Cursor, Codex CLI, Windsurf, Continue.dev or Aider can invoke `review-replay` when you ask them to verify PR feedback.
+### Claude Code (one-shot plugin install)
 
-See [`integrations/`](./integrations/) for ready-to-copy files per tool.
+The repo doubles as a single-plugin Claude Code marketplace. Inside Claude Code:
+
+```
+/plugin marketplace add alejandroSuch/review-replay
+/plugin install review-replay@review-replay
+```
+
+The skill triggers when the user says things like "did I address the reviews?" or "re-check the PR before pinging the reviewer". See [`integrations/claude-code/`](./integrations/claude-code/) for manual install + prerequisites.
+
+### Other assistants
+
+Drop-in rules / skills for Cursor, Codex CLI, Windsurf, Continue.dev and Aider live under [`integrations/`](./integrations/). Each subfolder has the ready-to-copy file plus a per-tool README.
 
 ## Eval harness
 

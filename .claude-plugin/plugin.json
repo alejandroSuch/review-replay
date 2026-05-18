@@ -1,0 +1,13 @@
+{
+  "name": "review-replay",
+  "version": "0.1.0",
+  "description": "Verify reviewer concerns on a GitHub PR were addressed. Adds a Claude Code skill that invokes the review-replay CLI when the user asks to verify, re-check, or audit pull request feedback.",
+  "author": {
+    "name": "Alejandro Such",
+    "url": "https://github.com/alejandroSuch"
+  },
+  "homepage": "https://github.com/alejandroSuch/review-replay",
+  "repository": "https://github.com/alejandroSuch/review-replay",
+  "license": "MIT",
+  "keywords": ["pr-review", "code-review", "verifier", "github", "ai", "agentic"]
+}

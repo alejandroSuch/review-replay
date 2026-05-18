@@ -2,28 +2,35 @@
 
 A skill that lets Claude Code invoke review-replay when the user wants to verify PR feedback was addressed.
 
-## Install (global, all projects)
+## Install (recommended) — as a Claude Code plugin
 
-```bash
-mkdir -p ~/.claude/skills
-cp review-replay.md ~/.claude/skills/review-replay.md
+The whole repo is also a single-plugin Claude Code marketplace. Two commands inside Claude Code:
+
+```
+/plugin marketplace add alejandroSuch/review-replay
+/plugin install review-replay@review-replay
 ```
 
-## Install (single project)
-
-```bash
-mkdir -p .claude/skills
-cp review-replay.md .claude/skills/review-replay.md
-```
-
-Claude Code picks it up automatically based on the description in the frontmatter. The skill triggers when the user says things like:
+The skill gets installed in the current Claude Code session. Triggered automatically whenever the user says things like:
 
 - "did I address all the reviews?"
 - "re-check the PR before I tell the reviewer it's done"
 - "verify Copilot's feedback"
 - runs `/review-replay`
 
-It also runs proactively after any address-reviews flow to confirm the fixes actually resolved the concerns.
+The plugin only ships the skill (instructions for Claude). The actual `review-replay` binary still needs to be installed on PATH — see [Prerequisites](#prerequisites) below.
+
+## Manual install — drop in `~/.claude/skills/`
+
+If you prefer not to use the plugin system:
+
+```bash
+mkdir -p ~/.claude/skills
+curl -fsSL https://raw.githubusercontent.com/alejandroSuch/review-replay/main/skills/review-replay.md \
+  -o ~/.claude/skills/review-replay.md
+```
+
+Or per-project, drop the same file into `.claude/skills/review-replay.md`.
 
 ## Prerequisites
 

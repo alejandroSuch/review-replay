@@ -1,0 +1,14 @@
+{
+  "name": "review-replay",
+  "owner": {
+    "name": "Alejandro Such",
+    "url": "https://github.com/alejandroSuch"
+  },
+  "plugins": [
+    {
+      "name": "review-replay",
+      "source": ".",
+      "description": "Verify reviewer concerns on a GitHub PR were addressed by later commits and replies."
+    }
+  ]
+}

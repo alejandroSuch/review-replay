@@ -2,9 +2,9 @@
 
 Drop-in configs so your AI coding assistant can invoke `review-replay` when you ask it to verify PR feedback. Each subfolder has the ready-to-copy file plus a per-tool README explaining how to install it.
 
-| Assistant | Folder | Install location |
+| Assistant | Folder | Install |
 |---|---|---|
-| Claude Code | [claude-code/](./claude-code/) | `~/.claude/skills/review-replay.md` (global) or `.claude/skills/` (project) |
+| Claude Code | [claude-code/](./claude-code/) | `/plugin marketplace add alejandroSuch/review-replay` + `/plugin install review-replay@review-replay`, or drop the skill at `~/.claude/skills/review-replay.md` |
 | Codex CLI | [codex/](./codex/) | Append to `~/.codex/AGENTS.md` or `./AGENTS.md` |
 | Cursor | [cursor/](./cursor/) | `.cursor/rules/review-replay.mdc` |
 | Windsurf | [windsurf/](./windsurf/) | `.windsurf/rules/review-replay.md` |
