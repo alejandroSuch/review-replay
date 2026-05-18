@@ -26,7 +26,7 @@ If you prefer not to use the plugin system:
 
 ```bash
 mkdir -p ~/.claude/skills
-curl -fsSL https://raw.githubusercontent.com/alejandroSuch/review-replay/main/skills/review-replay.md \
+curl -fsSL https://raw.githubusercontent.com/alejandroSuch/review-replay/main/plugins/review-replay/skills/review-replay.md \
   -o ~/.claude/skills/review-replay.md
 ```
 

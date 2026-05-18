@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "review-replay",
-      "source": ".",
+      "source": "./plugins/review-replay",
       "description": "Verify reviewer concerns on a GitHub PR were addressed by later commits and replies."
     }
   ]
