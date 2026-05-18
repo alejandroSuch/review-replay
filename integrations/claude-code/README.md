@@ -16,7 +16,7 @@ The skill gets installed in the current Claude Code session. Triggered automatic
 - "did I address all the reviews?"
 - "re-check the PR before I tell the reviewer it's done"
 - "verify Copilot's feedback"
-- runs `/review-replay`
+- runs `/review-replay:check`
 
 The plugin only ships the skill (instructions for Claude). The actual `review-replay` binary still needs to be installed on PATH — see [Prerequisites](#prerequisites) below.
 
@@ -26,11 +26,14 @@ If you prefer not to use the plugin system:
 
 ```bash
 mkdir -p ~/.claude/skills
-curl -fsSL https://raw.githubusercontent.com/alejandroSuch/review-replay/main/plugins/review-replay/skills/review-replay.md \
-  -o ~/.claude/skills/review-replay.md
+mkdir -p ~/.claude/skills/review-replay
+curl -fsSL https://raw.githubusercontent.com/alejandroSuch/review-replay/main/plugins/review-replay/skills/review-replay/SKILL.md \
+  -o ~/.claude/skills/review-replay/SKILL.md
 ```
 
-Or per-project, drop the same file into `.claude/skills/review-replay.md`.
+Or per-project, drop the same file into `.claude/skills/review-replay/SKILL.md`.
+
+Note: the manual route ships the skill only (description-triggered). The `/review-replay:check` slash command is only available via the plugin install above.
 
 ## Prerequisites
 
