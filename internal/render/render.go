@@ -12,7 +12,7 @@ import (
 func Evidence(snap *types.PrSnapshot, inline []types.CommentEvidence, issue []types.IssueLevelEvidence) string {
 	var b strings.Builder
 	replies := len(snap.ReviewComments) - len(inline)
-	b.WriteString(fmt.Sprintf("\n%s/%s#%d · head %s\n", snap.PR.Owner, snap.PR.Repo, snap.PR.Number, short(snap.HeadSHA, 7)))
+	b.WriteString(bold(fmt.Sprintf("\n%s/%s#%d · head %s\n", snap.PR.Owner, snap.PR.Repo, snap.PR.Number, short(snap.HeadSHA, 7))))
 	b.WriteString(fmt.Sprintf("%d inline (%d replies) · %d issue-level · %d issue comments raw · %d review summaries raw · %d commits\n\n",
 		len(inline), replies, len(issue), len(snap.IssueComments), len(snap.ReviewSummaries), len(snap.Commits)))
 
@@ -81,7 +81,7 @@ func Evidence(snap *types.PrSnapshot, inline []types.CommentEvidence, issue []ty
 // filtering.
 func NothingToClassify(snap *types.PrSnapshot) string {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("\n%s/%s#%d · head %s\n\n", snap.PR.Owner, snap.PR.Repo, snap.PR.Number, short(snap.HeadSHA, 7)))
+	b.WriteString(bold(fmt.Sprintf("\n%s/%s#%d · head %s\n\n", snap.PR.Owner, snap.PR.Repo, snap.PR.Number, short(snap.HeadSHA, 7))))
 	b.WriteString("Nothing to classify on this PR.\n")
 	b.WriteString("Inline threads: 0. Substantive review summaries: 0. Substantive issue comments: 0.\n")
 	b.WriteString("Short messages (LGTM, thanks, emojis) are filtered out as non-classifiable noise.\n\n")
@@ -99,7 +99,7 @@ func renderTable(cols []column, rows [][]string) string {
 	header := make([]string, len(cols))
 	sep := make([]string, len(cols))
 	for i, c := range cols {
-		header[i] = pad(c.header, c.width)
+		header[i] = bold(pad(c.header, c.width))
 		sep[i] = strings.Repeat("─", c.width)
 	}
 	b.WriteString(strings.Join(header, " │ "))
@@ -118,11 +118,20 @@ func renderTable(cols []column, rows [][]string) string {
 }
 
 func pad(s string, n int) string {
-	r := []rune(s)
-	if len(r) >= n {
+	visible := stripANSI(s)
+	r := []rune(visible)
+	switch {
+	case len(r) > n:
+		// Truncate at the visible rune boundary. We drop ANSI codes from
+		// the truncated cell — colored cells are short enough in practice
+		// that this isn't a real loss.
 		return string(r[:n])
+	case len(r) == n:
+		// Exact fit: keep the ANSI wrappers intact.
+		return s
+	default:
+		return s + strings.Repeat(" ", n-len(r))
 	}
-	return s + strings.Repeat(" ", n-len(r))
 }
 
 func truncate(s string, n int) string {
