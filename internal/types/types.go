@@ -140,6 +140,17 @@ const (
 	OriginIssueComment   CommentOrigin = "issue-comment"
 )
 
+// ConfidenceLevel is a discrete confidence bucket. LLMs cluster their
+// numerical outputs in ~5 values anyway, so we ask them for one of three
+// explicit buckets that map to concrete evidence quality.
+type ConfidenceLevel string
+
+const (
+	ConfidenceHigh   ConfidenceLevel = "high"
+	ConfidenceMedium ConfidenceLevel = "medium"
+	ConfidenceLow    ConfidenceLevel = "low"
+)
+
 // Classification is the output for a single comment.
 type Classification struct {
 	CommentID         int64
@@ -147,7 +158,7 @@ type Classification struct {
 	Status            ClassificationStatus
 	EvidenceCommitSha *string
 	DraftReply        *string
-	Confidence        float64
+	Confidence        ConfidenceLevel
 	Rationale         string
 }
 

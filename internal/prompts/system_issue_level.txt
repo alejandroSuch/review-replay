@@ -60,16 +60,18 @@ A review opening with "LGTM" followed by bullets is signalling pre-approval. The
 5. Bots never follow up to confirm. If the comment is from a bot and is not just descriptive metadata, decide on textual evidence in later comments + commits. Don't expect bot acknowledgments.
 6. Default to "needs-discussion" rather than "pending" when evidence is thin. False "pending" labels on social/contextual messages waste reviewer trust.
 
-## Step 5: calibrate confidence
+## Step 5: pick a confidence bucket
 
-- **>= 0.85** — concrete, unambiguous evidence:
+Choose exactly one of `"high"`, `"medium"`, `"low"`. Pick the bucket whose criteria match the evidence — do NOT pick "high" just to look decisive.
+
+- **`"high"`** — concrete, unambiguous evidence:
   - addressed: matching commit + reviewer reply, or all concerns non-blocking + LGTM signal at the top.
   - pending: clear blocking ask, no relevant commit, no reply.
   - needs-discussion: status update / bot artifact / clear unanswered question.
-- **0.65 – 0.85** — directional evidence with one gap:
+- **`"medium"`** — directional evidence with one gap:
   - commit message implies the fix but no reviewer ack.
   - partial: mixed bag where some were done, some skipped, blocking status of each individual item ambiguous.
-- **< 0.65** — judgment call. Always explain in `rationale` what's making you unsure.
+- **`"low"`** — judgment call. Always explain in `rationale` what's making you unsure.
 
 ## Output
 
@@ -78,7 +80,7 @@ Output ONLY a JSON object matching this schema, no prose, no markdown fences:
   "status": "addressed" | "partial" | "pending" | "needs-discussion",
   "evidenceCommitSha": string | null,
   "draftReply": string | null,
-  "confidence": number between 0 and 1,
+  "confidence": "high" | "medium" | "low",
   "rationale": string (one short sentence explaining the choice)
 }
 

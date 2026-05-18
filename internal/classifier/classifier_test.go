@@ -48,10 +48,10 @@ func TestShortCircuitAddressedByOpener(t *testing.T) {
 }
 
 func TestParseClassification(t *testing.T) {
-	happy := `{"status":"addressed","evidenceCommitSha":"abc1234","draftReply":"Done in abc1234.","confidence":0.9,"rationale":"ok"}`
+	happy := `{"status":"addressed","evidenceCommitSha":"abc1234","draftReply":"Done in abc1234.","confidence":"high","rationale":"ok"}`
 	t.Run("clean", func(t *testing.T) {
 		p, err := ParseClassification(happy)
-		if err != nil || p.Status != types.StatusAddressed {
+		if err != nil || p.Status != types.StatusAddressed || p.Confidence != types.ConfidenceHigh {
 			t.Fatalf("got %+v err=%v", p, err)
 		}
 	})
@@ -68,9 +68,15 @@ func TestParseClassification(t *testing.T) {
 		}
 	})
 	t.Run("invalid status", func(t *testing.T) {
-		bad := `{"status":"maybe","confidence":0.5,"rationale":"x"}`
+		bad := `{"status":"maybe","confidence":"high","rationale":"x"}`
 		if _, err := ParseClassification(bad); err == nil {
 			t.Fatal("expected error")
+		}
+	})
+	t.Run("invalid confidence", func(t *testing.T) {
+		bad := `{"status":"pending","confidence":0.5,"rationale":"x"}`
+		if _, err := ParseClassification(bad); err == nil {
+			t.Fatal("expected error for numeric confidence")
 		}
 	})
 	t.Run("malformed", func(t *testing.T) {

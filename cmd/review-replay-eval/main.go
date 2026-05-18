@@ -262,7 +262,7 @@ func runEval(args []string) error {
 		Predicted  types.ClassificationStatus `json:"predicted"`
 		Source     types.ClassificationSource `json:"source"`
 		RuleName   string                     `json:"ruleName,omitempty"`
-		Confidence float64                    `json:"confidence"`
+		Confidence types.ConfidenceLevel      `json:"confidence"`
 		Rationale  string                     `json:"rationale"`
 		Notes      string                     `json:"notes"`
 		Match      bool                       `json:"match"`
@@ -416,25 +416,20 @@ func runEval(args []string) error {
 		fmt.Printf("  %d / %d = %.1f%%\n", falseAddressed, nonAddressedTotal, float64(falseAddressed)/float64(nonAddressedTotal)*100)
 	}
 
-	// Confidence calibration: bucket predictions by confidence band and report
-	// accuracy in each band. If conf >= 0.85 doesn't beat conf < 0.65 by a
-	// wide margin, the model isn't actually telling you when to trust it.
-	type band struct {
-		label string
-		lo    float64
-		hi    float64
-	}
-	bands := []band{
-		{">= 0.85", 0.85, 1.01},
-		{"0.65 - 0.85", 0.65, 0.85},
-		{"< 0.65", 0.0, 0.65},
+	// Confidence calibration: accuracy per bucket. If "high" doesn't beat
+	// "low" by a wide margin, the model isn't actually telling you when
+	// to trust it.
+	confLevels := []types.ConfidenceLevel{
+		types.ConfidenceHigh,
+		types.ConfidenceMedium,
+		types.ConfidenceLow,
 	}
 	fmt.Println("\nconfidence calibration:")
-	fmt.Printf("  %-12s %9s %9s\n", "band", "acc", "n")
-	for _, b := range bands {
+	fmt.Printf("  %-10s %9s %9s\n", "bucket", "acc", "n")
+	for _, level := range confLevels {
 		correct, total := 0, 0
 		for _, r := range results {
-			if r.Confidence < b.lo || r.Confidence >= b.hi {
+			if r.Confidence != level {
 				continue
 			}
 			total++
@@ -443,7 +438,7 @@ func runEval(args []string) error {
 			}
 		}
 		acc := safeDiv(float64(correct), float64(total)) * 100
-		fmt.Printf("  %-12s %8.1f%% %9d\n", b.label, acc, total)
+		fmt.Printf("  %-10s %8.1f%% %9d\n", level, acc, total)
 	}
 
 	fmt.Println("\nconfusion matrix (rows=expected, cols=predicted):")
@@ -481,7 +476,7 @@ func runEval(args []string) error {
 			if m.ParseError != "" {
 				tag = " [PARSE-FAIL]"
 			}
-			fmt.Printf("  [%s] %s expected=%s got=%s conf=%.2f%s\n", m.Kind, m.ID, m.Expected, m.Predicted, m.Confidence, tag)
+			fmt.Printf("  [%s] %s expected=%s got=%s conf=%s%s\n", m.Kind, m.ID, m.Expected, m.Predicted, m.Confidence, tag)
 			fmt.Printf("    rationale: %s\n", m.Rationale)
 			notes := m.Notes
 			if notes == "" {
@@ -517,10 +512,10 @@ func runEval(args []string) error {
 			falseAddressedRate = float64(falseAddressed) / float64(nonAddressedTotal)
 		}
 		calibration := map[string]map[string]float64{}
-		for _, b := range bands {
+		for _, level := range confLevels {
 			cb, tb := 0, 0
 			for _, r := range results {
-				if r.Confidence < b.lo || r.Confidence >= b.hi {
+				if r.Confidence != level {
 					continue
 				}
 				tb++
@@ -528,7 +523,7 @@ func runEval(args []string) error {
 					cb++
 				}
 			}
-			calibration[b.label] = map[string]float64{
+			calibration[string(level)] = map[string]float64{
 				"accuracy": safeDiv(float64(cb), float64(tb)),
 				"correct":  float64(cb),
 				"total":    float64(tb),
@@ -668,7 +663,7 @@ func runDiff(args []string) error {
 
 	// Confidence calibration deltas.
 	if len(a.ConfidenceCalibration) > 0 && len(b.ConfidenceCalibration) > 0 {
-		bands := []string{">= 0.85", "0.65 - 0.85", "< 0.65"}
+		bands := []string{"high", "medium", "low"}
 		fmt.Println("\nΔ calibration accuracy (B - A):")
 		fmt.Printf("  %-12s %10s %10s %10s\n", "band", "A acc", "B acc", "Δ")
 		for _, label := range bands {

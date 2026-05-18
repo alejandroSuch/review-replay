@@ -155,7 +155,7 @@ func applyShortCircuit(e types.CommentEvidence) *ruleHit {
 				CommentID:  e.Comment.ID,
 				Origin:     types.OriginInline,
 				Status:     types.StatusAddressed,
-				Confidence: 0.95,
+				Confidence: types.ConfidenceHigh,
 				Rationale:  rationale,
 			},
 		}
@@ -171,7 +171,7 @@ func applyShortCircuit(e types.CommentEvidence) *ruleHit {
 				CommentID:  e.Comment.ID,
 				Origin:     types.OriginInline,
 				Status:     types.StatusAddressed,
-				Confidence: 0.90,
+				Confidence: types.ConfidenceHigh,
 				Rationale:  fmt.Sprintf("Bot-authored thread marked resolved by %s (bots do not reply to confirm; the resolve click is the final ack).", resolver),
 			},
 		}
@@ -183,7 +183,7 @@ func applyShortCircuit(e types.CommentEvidence) *ruleHit {
 				CommentID:  e.Comment.ID,
 				Origin:     types.OriginInline,
 				Status:     types.StatusPending,
-				Confidence: 0.95,
+				Confidence: types.ConfidenceHigh,
 				Rationale:  "No code changes touched the path and no thread replies exist.",
 			},
 		}
@@ -195,7 +195,7 @@ type parsedClassification struct {
 	Status            types.ClassificationStatus `json:"status"`
 	EvidenceCommitSha *string                    `json:"evidenceCommitSha"`
 	DraftReply        *string                    `json:"draftReply"`
-	Confidence        float64                    `json:"confidence"`
+	Confidence        types.ConfidenceLevel      `json:"confidence"`
 	Rationale         string                     `json:"rationale"`
 }
 
@@ -241,12 +241,18 @@ var validStatuses = map[types.ClassificationStatus]bool{
 	types.StatusNeedsDiscussion: true,
 }
 
+var validConfidence = map[types.ConfidenceLevel]bool{
+	types.ConfidenceHigh:   true,
+	types.ConfidenceMedium: true,
+	types.ConfidenceLow:    true,
+}
+
 func validate(p *parsedClassification) error {
 	if !validStatuses[p.Status] {
 		return fmt.Errorf("invalid status %q", p.Status)
 	}
-	if p.Confidence < 0 || p.Confidence > 1 {
-		return fmt.Errorf("invalid confidence %v", p.Confidence)
+	if !validConfidence[p.Confidence] {
+		return fmt.Errorf("invalid confidence %q (expected high | medium | low)", p.Confidence)
 	}
 	return nil
 }
@@ -256,7 +262,7 @@ func fallback(commentID int64, origin types.CommentOrigin) types.Classification 
 		CommentID:  commentID,
 		Origin:     origin,
 		Status:     types.StatusNeedsDiscussion,
-		Confidence: 0,
+		Confidence: types.ConfidenceLow,
 		Rationale:  "Classifier output could not be parsed; flagged for human review.",
 	}
 }
