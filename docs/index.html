@@ -296,6 +296,33 @@ acme/api#482 · head <span style="color:var(--fg)">a7c1e3d</span>
     <div class="f"><span class="b">5</span><div><h4>Report with evidence</h4><p>Status + confidence + the commit or thread that proves it + a draft reply. Table, <code>--json</code>, or a CI exit code.</p></div></div>
     <div class="f"><span class="b">6</span><div><h4>Stateless, BYO key</h4><p>No DB, no web app. Auth from <code>gh</code> / <code>GITHUB_TOKEN</code>. Only the diffs and comments needed for classification reach your LLM provider.</p></div></div>
   </div>
+
+  <h3 style="font-size:18px;letter-spacing:-.02em;margin:40px 0 6px">What counts as "addressed" (and what doesn't)</h3>
+  <p class="sub" style="margin-bottom:16px">Every comment lands in one of four buckets. The call is about whether the reviewer's <em>intent</em> was satisfied, not whether a line moved.</p>
+  <div class="block" style="padding:6px 18px">
+    <table class="rrt">
+      <thead><tr><th>Status</th><th>When it applies</th></tr></thead>
+      <tbody>
+        <tr><td><span class="st st-ok">addressed</span></td><td class="cmt">A later commit makes the change the reviewer asked for (the diff moves in that direction) — or the thread was resolved by the reviewer who opened it, a question got an answer in the thread, or it was a non-blocking nit the reviewer pre-blessed skipping.</td></tr>
+        <tr><td><span class="st st-part">partial</span></td><td class="cmt">Some of the blocking asks landed, not all (e.g. "add tests" → only the happy path).</td></tr>
+        <tr><td><span class="st st-pend">pending</span></td><td class="cmt">Nothing relevant changed since the comment, or the change doesn't go in the asked direction.</td></tr>
+        <tr><td><span class="st st-disc">needs-discussion</span></td><td class="cmt">A question or a judgment call with no answer yet — not a concrete request.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="sub" style="margin:22px 0 16px">GitHub gives you a few signals that look like "addressed" but mean different things. Here's what each one actually buys you:</p>
+  <div class="block" style="padding:6px 18px">
+    <table class="rrt">
+      <thead><tr><th>Signal on GitHub</th><th>What it really means</th><th>What review-replay does</th></tr></thead>
+      <tbody>
+        <tr><td class="cmt">Comment went <code>outdated</code></td><td class="rep" style="font-size:13px">The line range shifted</td><td class="rep" style="font-size:13px">Ignored. A cosmetic refactor outdates a comment without fixing it; a fix in another file leaves it looking pending. Reads intent, not line numbers.</td></tr>
+        <tr><td class="cmt">A reply saying <code>"done"</code></td><td class="rep" style="font-size:13px">A claim, not proof</td><td class="rep" style="font-size:13px">Counts as <span class="st st-ok">addressed</span> only if the diff moved in the asked direction, or the reply names a commit SHA it can match.</td></tr>
+        <tr><td class="cmt">Thread resolved by the <b>reviewer</b> who opened it</td><td class="rep" style="font-size:13px">The person who raised it is satisfied</td><td class="rep" style="font-size:13px"><span class="st st-ok">addressed</span> deterministically — a short-circuit rule, no LLM call.</td></tr>
+        <tr><td class="cmt">Resolved by <b>someone else</b>, or never resolved</td><td class="rep" style="font-size:13px">Weak or no signal — many teams never click Resolve</td><td class="rep" style="font-size:13px">Treated as a hint at most. The verdict comes from the code + the thread.</td></tr>
+      </tbody>
+    </table>
+  </div>
 </section>
 
 <section id="install" class="wrap">
