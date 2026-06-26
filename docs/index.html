@@ -132,6 +132,14 @@
   .tabp{display:none}
   .tabp.on{display:block}
 
+  /* agents grid (all equal weight) */
+  .agents{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:680px){.agents{grid-template-columns:1fr 1fr}}
+  .agent{background:var(--panel-2);border:1px solid var(--border);border-radius:11px;padding:14px 15px;display:block;color:inherit;transition:.15s}
+  .agent:hover{border-color:var(--accent);text-decoration:none}
+  .agent h4{margin:0 0 5px;font-size:14.5px;letter-spacing:-.01em}
+  .agent code{font-size:12px;color:var(--muted);font-family:var(--mono)}
+
   /* install steps */
   .steps{display:grid;grid-template-columns:1fr 1fr;gap:16px}
   @media(max-width:760px){.steps{grid-template-columns:1fr}.layers{grid-template-columns:1fr}.feat{grid-template-columns:1fr}.nav-links a:not(.gh){display:none}}
@@ -256,8 +264,8 @@ jobs:
 </section>
 
 <section id="cli" class="wrap">
-  <h2>Or run it yourself</h2>
-  <p class="sub">Before pinging the reviewer, or before a second-pass review. Same engine, plain terminal output. <code>--post</code> drafts the replies and posts them (interactive by default).</p>
+  <h2>Run it in your terminal</h2>
+  <p class="sub">Same engine, no CI needed. Run it before pinging the reviewer, or before a second-pass review, straight from the shell. <code>--post</code> drafts the replies and posts them for you (interactive by default).</p>
   <div class="term">
     <div class="bar"><i style="background:#ff5f56"></i><i style="background:#ffbd2e"></i><i style="background:#27c93f"></i><span class="t">review-replay acme/api#482</span></div>
 <pre><span class="c-cmd">$ review-replay acme/api#482</span>
@@ -314,26 +322,15 @@ review-replay owner/repo#42</pre>
     </div>
   </div>
   <div class="block" style="margin:16px 0 32px">
-    <h3>AI assistant integrations</h3>
-    <div class="tabs">
-      <button class="on" onclick="tab(this,'i-cc')">Claude Code</button>
-      <button onclick="tab(this,'i-others')">Cursor · Codex · Windsurf · Continue · Aider</button>
-    </div>
-    <div id="i-cc" class="tabp on">
-<pre><span class="m"># the repo doubles as a single-plugin marketplace</span>
-/plugin marketplace add alejandroSuch/review-replay
-/plugin install review-replay@review-replay
-
-<span class="m"># then just ask: "did I address the reviews on this PR?"</span></pre>
-    </div>
-    <div id="i-others" class="tabp">
-<pre><span class="m"># drop-in rules / skills per tool live under integrations/</span>
-github.com/alejandroSuch/review-replay/tree/main/integrations
-  ├─ cursor/      <span class="m"># rule file + README</span>
-  ├─ codex/       <span class="m"># AGENTS.md</span>
-  ├─ windsurf/
-  ├─ continue/    <span class="m"># config.snippet.json</span>
-  └─ aider/</pre>
+    <h3>Use it from your coding agent</h3>
+    <p style="color:var(--muted);font-size:13.5px;margin:-4px 0 14px">Ready-to-copy rules and skills, one per tool. Same verification, invoked in chat: <em>"did I address the reviews on this PR?"</em></p>
+    <div class="agents">
+      <a class="agent" href="https://github.com/alejandroSuch/review-replay/tree/main/integrations/aider"><h4>Aider</h4><code>convention file</code></a>
+      <a class="agent" href="https://github.com/alejandroSuch/review-replay/tree/main/integrations/claude-code"><h4>Claude Code</h4><code>plugin / skill</code></a>
+      <a class="agent" href="https://github.com/alejandroSuch/review-replay/tree/main/integrations/codex"><h4>Codex</h4><code>AGENTS.md</code></a>
+      <a class="agent" href="https://github.com/alejandroSuch/review-replay/tree/main/integrations/continue"><h4>Continue.dev</h4><code>config snippet</code></a>
+      <a class="agent" href="https://github.com/alejandroSuch/review-replay/tree/main/integrations/cursor"><h4>Cursor</h4><code>rule file</code></a>
+      <a class="agent" href="https://github.com/alejandroSuch/review-replay/tree/main/integrations/windsurf"><h4>Windsurf</h4><code>rule file</code></a>
     </div>
   </div>
 </section>
