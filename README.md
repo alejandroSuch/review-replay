@@ -30,6 +30,12 @@ As more code gets written by agents that claim "I addressed it", you need an ind
 
 ## Install
 
+### Prebuilt binary
+
+Download the archive for your OS/arch from the [latest release](https://github.com/alejandroSuch/review-replay/releases/latest) (linux / macOS / windows × amd64 / arm64), extract, and put `review-replay` on your `PATH`. Built by GoReleaser on every `v*` tag, with `checksums.txt`.
+
+### With Go
+
 ```bash
 go install github.com/alejandroSuch/review-replay/cmd/review-replay@latest
 ```

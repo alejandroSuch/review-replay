@@ -304,7 +304,11 @@ acme/api#482 · head <span style="color:var(--fg)">a7c1e3d</span>
   <div class="steps">
     <div class="block">
       <h3>CLI</h3>
-<pre><span class="g">go install</span> github.com/alejandroSuch/review-replay/cmd/review-replay@latest
+<pre><span class="m"># prebuilt binary (linux/macOS/windows × amd64/arm64):</span>
+github.com/alejandroSuch/review-replay/releases/latest
+
+<span class="m"># or with Go:</span>
+<span class="g">go install</span> github.com/alejandroSuch/review-replay/cmd/review-replay@latest
 
 <span class="m"># auth from your gh session:</span>
 export GITHUB_TOKEN="$(gh auth token)"
