@@ -21,6 +21,9 @@ import (
 	"github.com/alejandroSuch/review-replay/internal/types"
 )
 
+// version is set at build time via -ldflags "-X main.version=...". Defaults to "dev".
+var version = "dev"
+
 const usage = `review-replay <pr> [flags]
 
 Arguments:
@@ -120,6 +123,14 @@ func parseArgs() (args, error) {
 }
 
 func main() {
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "version", "--version", "-v":
+			fmt.Println("review-replay", version)
+			return
+		}
+	}
+
 	a, err := parseArgs()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
