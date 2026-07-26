@@ -26,6 +26,7 @@ You are running the `review-replay` slash command. The user wants to verify whet
    - `--check` for CI-gate semantics (exit 1 on pending).
    - `--reviewer <substring>` to filter to one author (e.g. `copilot`).
    - `--json` for machine-parseable output.
+   - `--markdown` to produce a PR-comment body (summary + a table of unresolved comments). Mostly for CI / the Action's sticky comment, not interactive use.
    - `--no-llm` for evidence-only (no classifier calls).
 4. Report back:
    - Summary line: `N addressed · M partial · K pending · L needs-discussion`.

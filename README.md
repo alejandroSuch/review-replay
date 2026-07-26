@@ -146,6 +146,7 @@ review-replay <pr> [flags]
 | `--no-llm` | Skip classification, only show deterministic evidence packets. |
 | `--ping-llm` | Probe LLM provider config and exit. |
 | `--json` | Emit full JSON output instead of the table. |
+| `--markdown` | Emit a PR-comment body (GitHub-flavored markdown): a summary line plus a table of the unresolved comments with draft replies. Requires classification (conflicts with `--no-llm`). The Action uses this to post a sticky PR comment. |
 
 ### LLM providers
 
@@ -197,10 +198,25 @@ Case-insensitive substring match on author login.
 - uses: alejandroSuch/review-replay/action@main
   with:
     mode: check
+    comment: true                        # post/update a sticky PR comment (needs pull-requests: write)
     api-key: ${{ secrets.OPENROUTER_API_KEY }}
 ```
 
 Make the job a required check to block merge on `pending` comments.
+
+### Action inputs
+
+| Input | Default | Purpose |
+|---|---|---|
+| `pr` | current PR | PR URL or `owner/repo#N`. |
+| `mode` | `check` | `check` exits 1 on pending; `report` prints only. |
+| `comment` | `false` | Post and update in place a sticky summary comment listing the unresolved feedback. Requires `pull-requests: write`. |
+| `reviewer` | (none) | Only classify comments whose author matches (e.g. `copilot`). |
+| `provider` / `model` / `api-key` / `base-url` | provider defaults | LLM provider config. `api-key` is required. |
+| `version` | `main` | Git ref, tag, commit, or `latest` of review-replay to install. |
+| `github-token` | `${{ github.token }}` | GitHub auth. |
+
+Outputs: `pending-count`, `summary`.
 
 See [`action/examples/copilot-followup.yml`](./action/examples/copilot-followup.yml) for a workflow that only blocks on Copilot's reviews.
 

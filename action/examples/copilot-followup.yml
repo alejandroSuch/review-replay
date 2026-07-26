@@ -12,7 +12,7 @@ jobs:
   verify-copilot:
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: read
+      pull-requests: write   # write: the action posts/updates a sticky summary comment
       contents: read
     steps:
       - name: Detect Copilot review
@@ -31,4 +31,5 @@ jobs:
         with:
           mode: check
           reviewer: copilot
+          comment: true
           api-key: ${{ secrets.OPENROUTER_API_KEY }}

@@ -36,6 +36,7 @@ Modes:
   --no-llm         Skip classification, only show evidence
   --ping-llm       Probe LLM provider config and exit
   --json           Print full JSON result
+  --markdown       Print a PR-comment body (GitHub markdown); requires classification
 
 Flags:
   -y, --yes        Skip confirmation prompt for --post
@@ -60,6 +61,7 @@ Env vars:
 type args struct {
 	pr       string
 	jsonOut  bool
+	markdown bool
 	noLLM    bool
 	pingLLM  bool
 	check    bool
@@ -79,6 +81,7 @@ func parseArgs() (args, error) {
 	fs.SetOutput(os.Stderr)
 	var a args
 	fs.BoolVar(&a.jsonOut, "json", false, "")
+	fs.BoolVar(&a.markdown, "markdown", false, "")
 	fs.BoolVar(&a.noLLM, "no-llm", false, "")
 	fs.BoolVar(&a.pingLLM, "ping-llm", false, "")
 	fs.BoolVar(&a.check, "check", false, "")
@@ -153,6 +156,10 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Error: --post requires classification (--no-llm conflicts).")
 		os.Exit(1)
 	}
+	if a.markdown && a.noLLM {
+		fmt.Fprintln(os.Stderr, "Error: --markdown requires classification (--no-llm conflicts).")
+		os.Exit(1)
+	}
 
 	pr, err := github.ParsePrRef(a.pr)
 	if err != nil {
@@ -180,6 +187,9 @@ func main() {
 	if len(res.Inline) == 0 && len(res.IssueLevel) == 0 {
 		if a.jsonOut {
 			writeJSON(map[string]any{"snapshot": res.Snapshot, "inline": res.Inline, "issueLevel": res.IssueLevel})
+		} else if a.markdown {
+			fmt.Printf("%s\n### review-replay\n\nNo review comments to check on `%s/%s#%d`.\n",
+				render.Marker, res.Snapshot.PR.Owner, res.Snapshot.PR.Repo, res.Snapshot.PR.Number)
 		} else {
 			fmt.Print(render.NothingToClassify(res.Snapshot))
 		}
@@ -221,6 +231,8 @@ func main() {
 
 	if a.jsonOut {
 		writeJSON(classified)
+	} else if a.markdown {
+		fmt.Print(render.Markdown(res.Snapshot, res.Inline, res.IssueLevel, classified.Outcomes))
 	} else {
 		fmt.Print(render.Report(res.Snapshot, res.Inline, res.IssueLevel, classified.Outcomes))
 		if u := classified.Report.Usage; u.EstimatedUSD > 0 {

@@ -30,6 +30,10 @@ inputs:
   reviewer:
     description: Only classify comments whose author matches (case-insensitive substring). Useful for gating on a specific reviewer like Copilot.
     required: false
+  comment:
+    description: 'Post (and update in place) a sticky summary comment on the PR listing the unresolved feedback. true | false.'
+    required: false
+    default: "false"
   github-token:
     description: GitHub token (falls back to ${{ github.token }})
     required: false
@@ -71,6 +75,7 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
+        GH_TOKEN: ${{ inputs.github-token }}
         RR_PROVIDER: ${{ inputs.provider }}
         RR_MODEL: ${{ inputs.model }}
         RR_API_KEY: ${{ inputs.api-key }}
@@ -99,7 +104,17 @@ runs:
         echo "pending-count=$PENDING" >> "$GITHUB_OUTPUT"
         echo "## review-replay: $SUMMARY" >> "$GITHUB_STEP_SUMMARY"
 
-        # Also print the human-friendly table to the log for quick inspection.
-        review-replay "${{ inputs.pr }}" "${ARGS[@]}" || true
+        if [ "${{ inputs.comment }}" = "true" ]; then
+          # Render the PR-comment body once and upsert a sticky comment (edit the
+          # last one, or create it if none exists). Also tee to the log.
+          BODY=$(mktemp)
+          review-replay "${{ inputs.pr }}" --markdown "${ARGS[@]}" | tee "$BODY"
+          gh pr comment "${{ inputs.pr }}" --body-file "$BODY" --edit-last \
+            || gh pr comment "${{ inputs.pr }}" --body-file "$BODY" \
+            || echo "::warning::review-replay: could not post the PR comment"
+        else
+          # Print the human-friendly table to the log for quick inspection.
+          review-replay "${{ inputs.pr }}" "${ARGS[@]}" || true
+        fi
 
         exit $EXIT
