@@ -37,6 +37,8 @@ Modes:
   --ping-llm       Probe LLM provider config and exit
   --json           Print full JSON result
   --markdown       Print a PR-comment body (GitHub markdown); requires classification
+  --emit-prompts   Print JSON with rule verdicts and the classifier prompts, for a
+                   host that runs the model itself (e.g. the Claude Code mod)
 
 Flags:
   -y, --yes        Skip confirmation prompt for --post
@@ -62,6 +64,7 @@ type args struct {
 	pr       string
 	jsonOut  bool
 	markdown bool
+	emit     bool
 	noLLM    bool
 	pingLLM  bool
 	check    bool
@@ -82,6 +85,7 @@ func parseArgs() (args, error) {
 	var a args
 	fs.BoolVar(&a.jsonOut, "json", false, "")
 	fs.BoolVar(&a.markdown, "markdown", false, "")
+	fs.BoolVar(&a.emit, "emit-prompts", false, "")
 	fs.BoolVar(&a.noLLM, "no-llm", false, "")
 	fs.BoolVar(&a.pingLLM, "ping-llm", false, "")
 	fs.BoolVar(&a.check, "check", false, "")
@@ -182,6 +186,11 @@ func main() {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(2)
+	}
+
+	if a.emit {
+		writeJSON(pipeline.Prompts(res))
+		return
 	}
 
 	if len(res.Inline) == 0 && len(res.IssueLevel) == 0 {

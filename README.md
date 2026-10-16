@@ -146,6 +146,7 @@ review-replay <pr> [flags]
 | `--no-llm` | Skip classification, only show deterministic evidence packets. |
 | `--ping-llm` | Probe LLM provider config and exit. |
 | `--json` | Emit full JSON output instead of the table. |
+| `--emit-prompts` | Emit JSON with each comment's short-circuit verdict or its classifier prompts, without calling a model. Used by the Claude Code pane, which runs the prompts on the session's own Claude login. |
 | `--markdown` | Emit a PR-comment body (GitHub-flavored markdown): a summary line plus a table of the unresolved comments with draft replies. Requires classification (conflicts with `--no-llm`). The Action uses this to post a sticky PR comment. |
 
 ### LLM providers
@@ -232,6 +233,18 @@ The repo doubles as a single-plugin Claude Code marketplace. Inside Claude Code:
 ```
 
 The skill triggers when the user says things like "did I address the reviews?" or "re-check the PR before pinging the reviewer". See [`integrations/claude-code/`](./integrations/claude-code/) for manual install + prerequisites.
+
+#### Review pane
+
+The plugin also adds `/review-pane`, a live pane that shows the verdict table inside Claude Code:
+
+```
+/review-pane https://github.com/owner/repo/pull/123   # or owner/repo#123, a PR number, or nothing for this branch's PR
+```
+
+The CLI fetches the PR and applies its short-circuit rules (`--emit-prompts`), and the pane classifies the rest with your Claude Code session's own model, so no provider API key is needed. Use `j`/`k` to move between comments and `c` to copy a draft reply. It needs the `review-replay` binary (on `PATH`, or set its path under the plugin's options in `/config`) and a logged-in `gh`. The classifier model defaults to `haiku`.
+
+To develop it from a checkout: `claude --plugin-dir plugins/review-replay`; check it with `claude plugin validate plugins/review-replay` and `claude plugin test plugins/review-replay`.
 
 ### Other assistants
 
